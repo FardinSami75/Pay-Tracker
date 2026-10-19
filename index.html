@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pay Tracker</title>
+<meta name="theme-color" content="#1d4fa8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: timesheet ledger — summary strip, entry card beside the charts, then the month's punch list */
+:root{
+  --bg:#f2f4f7; --surface:#ffffff; --surface-2:#e9edf2; --line:#d5dbe3;
+  --ink:#141c27; --ink-2:#4a5566; --ink-3:#768195;
+  --accent:#1d4fa8; --accent-ink:#ffffff; --danger:#b42318; --ok:#1f7a4d;
+  --job-av:#2a78d6; --job-win:#eb6834; --job-stamp:#1baf7a;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e131a; --surface:#161d27; --surface-2:#1e2733; --line:#2b3644;
+  --ink:#e8edf4; --ink-2:#a9b4c4; --ink-3:#7c889a;
+  --accent:#6f9cf0; --accent-ink:#0b1220; --danger:#f0786b; --ok:#5cc690;
+  --job-av:#3987e5; --job-win:#d95926; --job-stamp:#199e70; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e131a; --surface:#161d27; --surface-2:#1e2733; --line:#2b3644;
+  --ink:#e8edf4; --ink-2:#a9b4c4; --ink-3:#7c889a;
+  --accent:#6f9cf0; --accent-ink:#0b1220; --danger:#f0786b; --ok:#5cc690;
+  --job-av:#3987e5; --job-win:#d95926; --job-stamp:#199e70; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding-block:20px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+h1{font-size:30px;font-weight:800;font-stretch:80%;letter-spacing:-.01em;line-height:1}
+h2{font-size:18px;font-weight:700;font-stretch:88%}
+.eyebrow{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.top .who{display:flex;flex-direction:column;gap:6px}
+.topctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.authwrap{min-height:100vh;display:grid;place-items:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.authcard{width:100%;max-width:380px}
+.authcard .btn{flex:none;width:100%}
+input[type=email],input[type=password]{width:100%;height:42px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:15px}
+.ok{font-size:13px;color:var(--ok)}
+.backup{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.signout{border:0;background:transparent;color:var(--ink-3);font-size:12px;font-weight:600;padding:0;text-decoration:underline;text-underline-offset:2px}
+.btn.dl{height:46px;border-radius:999px}
+.btn.dl:disabled{opacity:.6;cursor:default}
+.monthnav{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px}
+.monthnav button{border:0;background:transparent;width:36px;height:36px;border-radius:999px;font-size:18px;color:var(--ink-2)}
+.monthnav button:hover:not(:disabled){background:var(--surface-2);color:var(--ink)}
+.monthnav button:disabled{opacity:.3;cursor:default}
+.monthnav .label{font-family:var(--f-display);font-weight:700;font-stretch:85%;font-size:17px;min-width:128px;text-align:center}
+
+/* summary strip */
+.strip{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.strip>div{padding:14px 18px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.strip>div+div{border-left:1px solid var(--line)}
+.strip .big{font-family:var(--f-display);font-weight:800;font-stretch:78%;font-size:34px;line-height:1.1;font-variant-numeric:tabular-nums}
+.strip .mid{font-family:var(--f-display);font-weight:700;font-stretch:80%;font-size:24px;line-height:1.2;font-variant-numeric:tabular-nums}
+.strip .sub{font-size:12px;color:var(--ink-3)}
+@media (max-width:700px){.strip{grid-template-columns:1fr 1fr}.strip>div:nth-child(3){border-left:0}.strip>div:nth-child(n+3){border-top:1px solid var(--line)}}
+
+/* main grid */
+.grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* form */
+form{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field>label,.field>.lbl{font-size:12px;font-weight:600;color:var(--ink-2)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type=date],input[type=time],input[type=number],select{width:100%;min-width:0;height:42px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-family:var(--f-mono);font-size:15px}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.jobs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.jobs button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 6px;font-size:13px;font-weight:600;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;line-height:1.2}
+.jobs button .dot{width:10px;height:10px;border-radius:50%}
+.jobs button[aria-pressed=true]{border-color:var(--ink);background:var(--surface);box-shadow:inset 0 0 0 1px var(--ink)}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:8px}
+.facts>div{padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.facts>div+div{border-left:1px solid var(--line)}
+.facts b{font-size:15px;font-weight:600}
+.pill{font-family:var(--f-mono);font-size:11px;letter-spacing:.04em;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);background:var(--surface-2);white-space:nowrap}
+button.pill{background:transparent}
+button.pill:hover{color:var(--ink);border-color:var(--ink-3)}
+.check{display:flex;align-items:center;gap:8px;font-size:14px}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.preview{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:12px 14px;border-radius:8px;background:var(--surface-2);flex-wrap:wrap}
+.preview .amt{font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:26px;font-variant-numeric:tabular-nums}
+.preview .detail{font-family:var(--f-mono);font-size:12px;color:var(--ink-2)}
+.actions{display:flex;gap:8px}
+.btn{height:44px;border-radius:8px;border:1px solid var(--line);background:var(--surface);padding:0 16px;font-weight:600}
+.btn.primary{flex:1;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:disabled{opacity:.5;cursor:default}
+.btn:hover:not(:disabled){filter:brightness(1.06)}
+.hint{font-size:12px;color:var(--ink-3)}
+.replace{font-size:13px;color:var(--ink-2);padding:8px 12px;border-radius:8px;border:1px dashed var(--accent)}
+.err{font-size:13px;color:var(--danger)}
+
+/* charts */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--bg)}
+.seg button{border:0;background:transparent;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.pies{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:520px){.pies{grid-template-columns:1fr}}
+.pie{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+.pie svg{width:100%;max-width:200px;height:auto;display:block}
+.pie svg path{cursor:default;transition:opacity .15s}
+.pie svg path:hover{opacity:.85}
+.pie .cap{font-size:12px;font-weight:600;color:var(--ink-2)}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:6px;white-space:nowrap;z-index:5;font-family:var(--f-mono)}
+.empty-pie{width:100%;max-width:200px;aspect-ratio:1;border-radius:50%;border:2px dashed var(--line);display:grid;place-items:center;color:var(--ink-3);font-size:12px;text-align:center;padding:20px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:11px;font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:500;text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td:first-child{font-family:var(--f-body);font-weight:500}
+tr.total td{border-bottom:0;font-weight:600}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:baseline}
+.tablewrap{overflow-x:auto}
+
+/* shift list */
+.list{display:flex;flex-direction:column}
+.day{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.day:first-child{border-top:0}
+.day .d{display:flex;flex-direction:column;line-height:1.1}
+.day .d b{font-family:var(--f-display);font-weight:800;font-stretch:78%;font-size:24px}
+.day .d span{font-size:11px;font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3)}
+.shifts{display:flex;flex-direction:column;gap:8px;min-width:0}
+.shift{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 96px 120px;gap:4px 12px;align-items:center;padding:8px 10px;border-radius:8px;border:1px solid transparent}
+.shift:hover{background:var(--surface-2)}
+.shift.editing{border-color:var(--accent);background:var(--surface-2)}
+.shift .job{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;min-width:0;flex-wrap:wrap}
+.shift .job .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.shift .times{font-family:var(--f-mono);font-size:13px;color:var(--ink-2)}
+.shift .money{text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.shift .money b{font-family:var(--f-mono);font-weight:600;font-size:14px}
+.shift .money span{font-family:var(--f-mono);font-size:12px;color:var(--ink-3)}
+.shift .ops{display:flex;gap:4px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.tag{font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--ink-2)}
+.tag.sched{border-style:dashed}
+.tag.ot{color:var(--accent);border-color:var(--accent)}
+.linkbtn{border:0;background:transparent;color:var(--ink-3);font-size:12px;font-weight:600;padding:4px 6px;border-radius:6px}
+.linkbtn:hover{color:var(--ink);background:var(--surface)}
+.linkbtn.danger{color:var(--danger)}
+@media (max-width:760px){.shift{grid-template-columns:minmax(0,1fr) auto}.shift .times{grid-column:1;grid-row:2}.shift .money{grid-row:1/3;grid-column:2}.shift .ops{grid-column:1/-1;grid-row:3}}
+@media (max-width:440px){.strip .big{font-size:27px}.strip .mid{font-size:21px}.strip>div{padding:12px 14px}}
+.blank{padding:28px 8px;text-align:center;color:var(--ink-3)}
+
+/* rates */
+details summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
+details summary::-webkit-details-marker{display:none}
+details summary .chev{transition:transform .2s;color:var(--ink-3)}
+details[open] summary .chev{transform:rotate(90deg)}
+.rates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+@media (max-width:700px){.rates{grid-template-columns:1fr}}
+.rate{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.rate .now{font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:22px}
+.rate ul{margin:0;padding:0;list-style:none;font-family:var(--f-mono);font-size:12px;color:var(--ink-2)}
+.addrate{display:grid;grid-template-columns:1.3fr 1fr 1.2fr auto;gap:8px;align-items:end;margin-top:14px}
+@media (max-width:700px){.addrate{grid-template-columns:1fr 1fr}}
+.rules{font-size:13px;color:var(--ink-2);margin:10px 0 0;padding-left:18px}
+
+.banner{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--danger);border-radius:8px;padding:12px 14px;font-size:14px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:20;transition:opacity .2s}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<div class="authwrap" id="authScreen" hidden>
+  <form class="card authcard" id="authForm" novalidate>
+    <div class="who"><span class="eyebrow">AV/IT · Winners · Stampede</span><h1>Pay Tracker</h1></div>
+    <p class="hint" id="authIntro">Sign in to see and log your shifts.</p>
+    <div class="field"><label for="aEmail">Email</label><input type="email" id="aEmail" autocomplete="email" required></div>
+    <div class="field"><label for="aPass">Password</label><input type="password" id="aPass" autocomplete="current-password" minlength="6" required></div>
+    <div class="err" id="aErr" hidden></div>
+    <div class="ok" id="aOk" hidden></div>
+    <button class="btn primary" type="submit" id="aSignIn">Sign in</button>
+    <button class="btn" type="button" id="aSignUp">Create account</button>
+  </form>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header class="top">
+    <div class="who">
+      <span class="eyebrow">AV/IT · Winners · Stampede</span>
+      <h1>Pay Tracker</h1>
+      <span class="hint"><span id="whoEmail"></span> · <button class="signout" id="signOut" type="button">Sign out</button></span>
+    </div>
+    <div class="topctl">
+    <button class="btn dl" id="dlBtn" type="button" hidden>↓ Download Excel</button>
+    <nav class="monthnav" aria-label="Month">
+      <button id="prevM" aria-label="Previous month">‹</button>
+      <span class="label" id="mLabel">—</span>
+      <button id="nextM" aria-label="Next month">›</button>
+    </nav>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section class="strip" aria-label="Month summary">
+    <div><span class="eyebrow">Earnings</span><span class="big" id="sEarn">$0.00</span><span class="sub" id="sEarnSub">Loading your shifts…</span></div>
+    <div><span class="eyebrow">Paid hours</span><span class="mid" id="sHrs">0.00</span><span class="sub" id="sHrsSub">&nbsp;</span></div>
+    <div><span class="eyebrow">Shifts</span><span class="mid" id="sShifts">0</span><span class="sub" id="sShiftsSub">&nbsp;</span></div>
+    <div><span class="eyebrow">Days off</span><span class="mid" id="sOff">0</span><span class="sub" id="sOffSub">&nbsp;</span></div>
+  </section>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="formTitle">
+      <div class="card-head"><h2 id="formTitle">Log a shift</h2><span class="pill" id="formMode" hidden>Editing</span></div>
+      <form id="form" novalidate>
+        <div class="field"><label for="fDate">Date</label><input type="date" id="fDate" required></div>
+        <div class="field"><span class="lbl" id="jobLbl">Job</span><div class="jobs" role="group" aria-labelledby="jobLbl" id="jobBtns"></div></div>
+        <div class="row2">
+          <div class="field"><label for="fIn">In</label><input type="time" id="fIn" required></div>
+          <div class="field"><label for="fOut">Out</label><input type="time" id="fOut" required></div>
+        </div>
+        <div class="facts" aria-live="polite">
+          <div><span class="eyebrow">Shift</span><b class="num" id="kSpan">—</b></div>
+          <div><span class="eyebrow">Unpaid break</span><b class="num" id="kBreak">—</b></div>
+          <div><span class="eyebrow">Stat holiday</span><b id="kStat">No</b></div>
+        </div>
+        <div class="preview" aria-live="polite"><span class="amt" id="pAmt">$0.00</span><span class="detail" id="pDetail">Enter in and out times</span></div>
+        <div class="replace" id="fReplace" hidden></div>
+        <div class="err" id="fErr" hidden></div>
+        <div class="actions">
+          <button type="button" class="btn" id="cancelEdit" hidden>Cancel</button>
+          <button type="submit" class="btn primary" id="saveBtn">Save shift</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="statsTitle">
+      <div class="card-head">
+        <h2 id="statsTitle">Split by job</h2>
+        <div class="seg" role="group" aria-label="Chart range"><button id="scMonth" aria-pressed="true">This month</button><button id="scAll" aria-pressed="false">All time</button></div>
+      </div>
+      <div class="pies">
+        <div class="pie" id="pieHrs"></div>
+        <div class="pie" id="pieEarn"></div>
+      </div>
+      <div class="tablewrap"><table id="jobTable" aria-label="Totals by job"></table></div>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="listTitle">
+    <div class="card-head"><h2 id="listTitle">Shifts</h2><span class="hint" id="listHint"></span></div>
+    <div class="list" id="list"><div class="blank">Your shifts for this month will show here. Log one with the form above.</div></div>
+  </section>
+
+  <section class="card">
+    <details id="ratesBox">
+      <summary><h2>Pay rates &amp; break rules</h2><span class="chev">›</span></summary>
+      <div class="rates" id="rates"></div>
+      <form id="rateForm" class="addrate" novalidate>
+        <div class="field"><label for="rJob">Job</label><select id="rJob"></select></div>
+        <div class="field"><label for="rRate">New rate ($/hr)</label><input type="number" id="rRate" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="field"><label for="rFrom">Starting</label><input type="date" id="rFrom"></div>
+        <button class="btn" type="submit">Add rate</button>
+      </form>
+      <ul class="rules">
+        <li>University AV/IT: no break at 5 hours or less, 30 min over 5 hours, 60 min at 8 hours or more.</li>
+        <li>Winners: no break at 5 hours or less, 30 min up to 6.5 hours, 45 min over 6.5 hours.</li>
+        <li>Stampede: no break at 5 hours or less, 30 min over 5 hours.</li>
+        <li>Worked hours past 8 in a shift pay 1.5×.</li>
+        <li>Winners only: every hour on an Alberta general holiday pays 1.5× (New Year's Day, Family Day, Good Friday, Victoria Day, Canada Day, Labour Day, Thanksgiving, Remembrance Day, Christmas Day).</li>
+      </ul>
+      <div class="backup">
+        <span class="hint">Backup file (.json):</span>
+        <button class="btn" type="button" id="bkDown">Download backup</button>
+        <button class="btn" type="button" id="bkUp">Import backup</button>
+        <input type="file" id="bkFile" accept=".json,application/json" hidden>
+      </div>
+    </details>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const JOBS=[
+  {name:"University AV/IT",short:"AV/IT",color:"var(--job-av)"},
+  {name:"Winners",short:"Winners",color:"var(--job-win)"},
+  {name:"Stampede",short:"Stampede",color:"var(--job-stamp)"}];
+const JOB=Object.fromEntries(JOBS.map(j=>[j.name,j]));
+// Alberta general holidays
+const STATS=new Set(["2026-01-01","2026-02-16","2026-04-03","2026-05-18","2026-07-01","2026-09-07","2026-10-12","2026-11-11","2026-12-25",
+  "2027-01-01","2027-02-15","2027-03-26","2027-05-24","2027-07-01","2027-09-06","2027-10-11","2027-11-11","2027-12-25"]);
+
+/* ---------- pay engine ---------- */
+const pad=n=>String(n).padStart(2,"0");
+function normT(t){if(!t)return"";const[h,m]=t.split(":").map(Number);return pad(h%24)+":"+pad(m)}
+function toMin(t){const[h,m]=t.split(":").map(Number);return h*60+m}
+function spanMin(i,o){let s=toMin(o)-toMin(i);if(s<=0)s+=1440;return s}
+function autoBreak(job,span){const h=span/60;
+  if(job==="University AV/IT")return h>=8?60:h>5?30:0;
+  if(h<=5)return 0;
+  if(job==="Winners")return h<=6.5?30:45;return 30}
+const isStat=(job,date)=>job==="Winners"&&STATS.has(date);
+function paid(span,brk,stat){const w=Math.max(0,(span-brk)/60);
+  if(stat)return{worked:w,paid:w*1.5,ot:0};
+  return w>8?{worked:w,paid:8+(w-8)*1.5,ot:w-8}:{worked:w,paid:w,ot:0}}
+let rates={};
+function rateFor(job,date){const h=(rates[job]||[]).slice().sort((a,b)=>a.from<b.from?-1:1);let r=null;
+  for(const e of h){if(e.from<=date)r=e.rate}return r??(h[0]?h[0].rate:0)}
+function calc(s){const sp=spanMin(s.in,s.out),brk=autoBreak(s.job,sp),stat=isStat(s.job,s.date),p=paid(sp,brk,stat),rate=rateFor(s.job,s.date);
+  return{...p,span:sp,brk,stat,rate,earn:p.paid*rate}}
+
+/* ---------- formatting ---------- */
+const money=v=>v.toLocaleString("en-CA",{style:"currency",currency:"CAD",currencyDisplay:"narrowSymbol"});
+const hrs=v=>v.toFixed(2);
+const MON=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const parseD=d=>{const[y,m,dd]=d.split("-").map(Number);return new Date(y,m-1,dd)};
+const todayStr=(()=>{const t=new Date();return t.getFullYear()+"-"+pad(t.getMonth()+1)+"-"+pad(t.getDate())})();
+const mKey=d=>d.slice(0,7);
+const mLabel=k=>{const[y,m]=k.split("-").map(Number);return MON[m-1].slice(0,3)+" "+y};
+const addMonth=(k,n)=>{let[y,m]=k.split("-").map(Number);m+=n;while(m>12){m-=12;y++}while(m<1){m+=12;y--}return y+"-"+pad(m)};
+const daysIn=k=>{const[y,m]=k.split("-").map(Number);return new Date(y,m,0).getDate()};
+const fmt12=t=>{const[h,m]=t.split(":").map(Number);return h+":"+pad(m)};
+const $=id=>document.getElementById(id);
+
+/* ---------- state ---------- */
+const S={shifts:[],month:mKey(todayStr),scope:"month",job:"University AV/IT",editId:null,confirmDel:null,loaded:false,canWrite:true};
+let db=null;
+
+/* ---------- form ---------- */
+$("jobBtns").innerHTML=JOBS.map(j=>`<button type="button" data-job="${j.name}" aria-pressed="false"><span class="dot" style="background:${j.color}"></span>${j.short}</button>`).join("");
+$("jobBtns").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.job=b.dataset.job;syncForm()});
+$("rJob").innerHTML=JOBS.map(j=>`<option>${j.name}</option>`).join("");
+$("fDate").value=todayStr;$("rFrom").value=todayStr;
+["fDate","fIn","fOut"].forEach(id=>$(id).addEventListener("input",syncForm));
+$("fDate").addEventListener("change",syncForm);
+$("cancelEdit").addEventListener("click",resetForm);
+
+function formShift(){return{date:$("fDate").value,job:S.job,in:$("fIn").value,out:$("fOut").value}}
+function matchFor(f){return S.editId?null:S.shifts.find(s=>s.date===f.date&&s.job===f.job)||null}
+function syncForm(){
+  document.querySelectorAll("#jobBtns button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.job===S.job)));
+  const f=formShift(),m=f.date?matchFor(f):null;
+  $("fReplace").hidden=!m;
+  if(m)$("fReplace").textContent=`You already have a ${JOB[m.job].short} shift on this date (${fmt12(m.in)}–${fmt12(m.out)}). Saving will replace it.`;
+  $("saveBtn").textContent=S.editId?"Update shift":m?"Replace shift":"Save shift";
+  $("kStat").textContent=f.date&&isStat(f.job,f.date)?"Yes · 1.5×":"No";
+  if(!f.in||!f.out){$("pAmt").textContent=money(0);$("pDetail").textContent="Enter in and out times";$("kSpan").textContent="—";$("kBreak").textContent="—";return}
+  const c=calc(f);
+  $("kSpan").textContent=`${hrs(c.span/60)} h${toMin(f.out)<=toMin(f.in)?" ↷":""}`;
+  $("kBreak").textContent=c.brk?`${c.brk} min`:"None";
+  $("pAmt").textContent=money(c.earn);
+  let d=`${hrs(c.paid)} paid h × ${money(c.rate)}`;
+  if(c.ot>0)d+=` · ${hrs(c.ot)} h at 1.5×`;
+  if(c.stat)d+=" · stat 1.5×";
+  $("pDetail").textContent=d;
+}
+function resetForm(){S.editId=null;$("fIn").value="";$("fOut").value="";
+  $("formTitle").textContent="Log a shift";$("formMode").hidden=true;$("cancelEdit").hidden=true;$("saveBtn").textContent="Save shift";$("fErr").hidden=true;
+  syncForm();renderList()}
+function editShift(id){const s=S.shifts.find(x=>x.id===id);if(!s)return;S.editId=id;S.job=s.job;
+  $("fDate").value=s.date;$("fIn").value=s.in;$("fOut").value=s.out;
+  $("formTitle").textContent="Edit shift";$("formMode").hidden=false;$("cancelEdit").hidden=false;$("saveBtn").textContent="Update shift";
+  syncForm();renderList();$("form").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"})}
+
+$("form").addEventListener("submit",async e=>{e.preventDefault();const s=formShift();
+  const err=m=>{$("fErr").textContent=m;$("fErr").hidden=false};
+  if(!s.date)return err("Pick a date.");if(!s.in||!s.out)return err("Enter both an in time and an out time.");
+  $("fErr").hidden=true;$("saveBtn").disabled=true;
+  const row={date:s.date,job:s.job,time_in:s.in,time_out:s.out,updated_at:new Date().toISOString()};
+  try{
+    const m=matchFor(s),id=S.editId||(m&&m.id);
+    const {error}=id?await sb.from("shifts").update(row).eq("id",id):await sb.from("shifts").insert({...row,user_id:S.user.id});
+    if(error)throw error;
+    toast(id?`${JOB[s.job].short} shift on ${s.date} updated`:"Shift saved");S.month=mKey(s.date);resetForm();await loadAll();
+  }catch(x){err("Couldn't save the shift. Check your connection and try again.")}
+  finally{$("saveBtn").disabled=false}});
+
+/* ---------- rates ---------- */
+$("rateForm").addEventListener("submit",async e=>{e.preventDefault();const job=$("rJob").value,rate=Number($("rRate").value),from=$("rFrom").value;
+  if(!rate||!from){toast("Enter a rate and a start date");return}
+  try{const {error}=await sb.from("rates").upsert({user_id:S.user.id,job,effective_from:from,rate},{onConflict:"user_id,job,effective_from"});if(error)throw error;
+    $("rRate").value="";toast(`${JOB[job].short} rate set to ${money(rate)}`);await loadAll()}catch(x){toast("Couldn't save the rate")}});
+function renderRates(){
+  $("rates").innerHTML=JOBS.map(j=>{const h=(rates[j.name]||[]).slice().sort((a,b)=>a.from<b.from?1:-1);
+    return `<div class="rate"><span class="eyebrow"><span class="sw" style="background:${j.color}"></span>${j.name}</span>
+    <span class="now">${h.length?money(rateFor(j.name,todayStr))+"/hr":"Not set"}</span>
+    <ul>${h.map(r=>`<li>from ${r.from} · ${money(r.rate)}</li>`).join("")}</ul></div>`}).join("")}
+
+/* ---------- pies ---------- */
+function pie(el,title,data,fmtV){
+  const total=data.reduce((a,d)=>a+d.v,0);
+  if(!total){el.innerHTML=`<div class="empty-pie">No ${title.toLowerCase()} yet</div><span class="cap">${title}</span>`;return}
+  const R=90,C=100;let a=-Math.PI/2,paths="";
+  const live=data.filter(d=>d.v>0);
+  live.forEach(d=>{const frac=d.v/total,lbl=`${d.name}: ${fmtV(d.v)} (${(frac*100).toFixed(0)}%)`;
+    if(live.length===1){paths+=`<circle cx="${C}" cy="${C}" r="${R}" fill="${d.color}" data-tip="${lbl}"></circle>`;return}
+    const a1=a+frac*2*Math.PI,large=frac>.5?1:0;
+    const x0=C+R*Math.cos(a),y0=C+R*Math.sin(a),x1=C+R*Math.cos(a1),y1=C+R*Math.sin(a1);
+    paths+=`<path d="M${C},${C} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${d.color}" stroke="var(--surface)" stroke-width="2" stroke-linejoin="round" data-tip="${lbl}"></path>`;
+    a=a1});
+  el.innerHTML=`<svg viewBox="0 0 200 200" role="img" aria-label="${title} by job: ${live.map(d=>d.name+" "+fmtV(d.v)).join(", ")}">${paths}</svg>
+    <span class="cap">${title} · <span class="num">${fmtV(total)}</span></span><div class="tip" hidden></div>`;
+  const tip=el.querySelector(".tip");
+  el.querySelectorAll("[data-tip]").forEach(p=>{
+    p.addEventListener("pointermove",ev=>{const r=el.getBoundingClientRect();tip.textContent=p.dataset.tip;tip.hidden=false;
+      let x=ev.clientX-r.left+12;const w=tip.offsetWidth;if(x+w>r.width)x=ev.clientX-r.left-w-12;tip.style.left=Math.max(0,x)+"px";tip.style.top=(ev.clientY-r.top-34)+"px"});
+    p.addEventListener("pointerleave",()=>tip.hidden=true)});
+}
+$("scMonth").addEventListener("click",()=>{S.scope="month";render()});
+$("scAll").addEventListener("click",()=>{S.scope="all";render()});
+
+/* ---------- render ---------- */
+function render(){
+  const k=S.month,inMonth=S.shifts.filter(s=>mKey(s.date)===k);
+  const months=S.shifts.map(s=>mKey(s.date)).sort();
+  const minM=months[0]||k,maxM=[months[months.length-1]||k,mKey(todayStr)].sort()[1];
+  $("prevM").disabled=k<=minM;$("nextM").disabled=k>=maxM;$("mLabel").textContent=mLabel(k);
+  // summary
+  let earn=0,h=0,sched=0;inMonth.forEach(s=>{const c=calc(s);earn+=c.earn;h+=c.paid;if(s.date>todayStr)sched+=c.earn});
+  const days=new Set(inMonth.map(s=>s.date)).size,dim=daysIn(k);
+  $("sEarn").textContent=money(earn);
+  $("sEarnSub").textContent=!S.loaded?"Loading your shifts…":sched>0?`includes ${money(sched)} scheduled`:inMonth.length?"before tax":"no shifts logged";
+  $("sHrs").textContent=hrs(h);$("sHrsSub").textContent=inMonth.length?`avg ${hrs(h/inMonth.length)} per shift`:" ";
+  $("sShifts").textContent=inMonth.length;$("sShiftsSub").textContent=`on ${days} day${days===1?"":"s"}`;
+  $("sOff").textContent=dim-days;$("sOffSub").textContent=`of ${dim} days`;
+  // charts
+  $("scMonth").setAttribute("aria-pressed",String(S.scope==="month"));$("scAll").setAttribute("aria-pressed",String(S.scope==="all"));
+  const pool=S.scope==="month"?inMonth:S.shifts;
+  const by=JOBS.map(j=>({name:j.name,short:j.short,color:j.color,h:0,e:0,n:0}));
+  pool.forEach(s=>{const b=by.find(x=>x.name===s.job);if(!b)return;const c=calc(s);b.h+=c.paid;b.e+=c.earn;b.n++});
+  pie($("pieHrs"),"Paid hours",by.map(b=>({name:b.short,color:b.color,v:b.h})),v=>hrs(v)+" h");
+  pie($("pieEarn"),"Earnings",by.map(b=>({name:b.short,color:b.color,v:b.e})),money);
+  const th=by.reduce((a,b)=>a+b.h,0),te=by.reduce((a,b)=>a+b.e,0);
+  $("jobTable").innerHTML=`<thead><tr><th>Job</th><th>Shifts</th><th>Hours</th><th>Earnings</th><th>Share</th></tr></thead><tbody>`+
+    by.filter(b=>b.n).map(b=>`<tr><td><span class="sw" style="background:${b.color}"></span>${b.name}</td><td>${b.n}</td><td>${hrs(b.h)}</td><td>${money(b.e)}</td><td>${te?(b.e/te*100).toFixed(0):0}%</td></tr>`).join("")+
+    `<tr class="total"><td>Total${S.scope==="all"?" (all time)":""}</td><td>${by.reduce((a,b)=>a+b.n,0)}</td><td>${hrs(th)}</td><td>${money(te)}</td><td></td></tr></tbody>`;
+  renderList();renderRates();
+}
+function renderList(){
+  const k=S.month,inMonth=S.shifts.filter(s=>mKey(s.date)===k).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.in<b.in?-1:1);
+  $("listTitle").textContent=`Shifts in ${MON[Number(k.slice(5))-1]}`;
+  $("listHint").textContent=inMonth.length?"Tap Edit to change a shift":"";
+  if(!inMonth.length){$("list").innerHTML=`<div class="blank">${S.loaded?"No shifts logged for "+mLabel(k)+". Use the form to add one.":"Loading your shifts…"}</div>`;return}
+  const groups={};inMonth.forEach(s=>(groups[s.date]=groups[s.date]||[]).push(s));
+  $("list").innerHTML=Object.keys(groups).map(d=>{const dt=parseD(d);
+    return `<div class="day"><div class="d"><b>${dt.getDate()}</b><span>${DOW[dt.getDay()]}</span></div><div class="shifts">`+
+    groups[d].map(s=>{const c=calc(s),j=JOB[s.job]||{short:s.job,color:"var(--ink-3)"};
+      const tags=[s.date>todayStr?'<span class="tag sched">Scheduled</span>':"",c.stat?'<span class="tag ot">Stat 1.5×</span>':"",c.ot>0?`<span class="tag ot">OT ${hrs(c.ot)}h</span>`:""].join("");
+      const ops=S.confirmDel===s.id?`<span class="hint">Delete this shift?</span><button class="linkbtn danger" data-del="${s.id}">Delete</button><button class="linkbtn" data-nodel>Keep</button>`
+        :`<button class="linkbtn" data-edit="${s.id}">Edit</button><button class="linkbtn" data-ask="${s.id}">Delete</button>`;
+      return `<div class="shift${S.editId===s.id?" editing":""}"><div class="job"><span class="dot" style="background:${j.color}"></span>${j.short}${tags}</div>
+      <div class="times">${fmt12(s.in)}–${fmt12(s.out)} · ${c.brk?c.brk+" min break":"no break"}</div>
+      <div class="money"><b>${money(c.earn)}</b><span>${hrs(c.paid)} h</span></div><div class="ops">${S.canWrite?ops:""}</div></div>`}).join("")+`</div></div>`}).join("");
+}
+$("list").addEventListener("click",async e=>{const t=e.target;
+  if(t.dataset.edit)editShift(t.dataset.edit);
+  else if(t.dataset.ask){S.confirmDel=t.dataset.ask;renderList()}
+  else if("nodel" in t.dataset){S.confirmDel=null;renderList()}
+  else if(t.dataset.del){const id=t.dataset.del;S.confirmDel=null;try{const {error}=await sb.from("shifts").delete().eq("id",id);if(error)throw error;if(S.editId===id)resetForm();toast("Shift deleted");await loadAll()}catch(x){toast("Couldn't delete the shift");renderList()}}});
+$("prevM").addEventListener("click",()=>{S.month=addMonth(S.month,-1);S.confirmDel=null;render()});
+$("nextM").addEventListener("click",()=>{S.month=addMonth(S.month,1);S.confirmDel=null;render()});
+
+let tt;function toast(m){const el=$("toast");el.textContent=m;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,2200)}
+function banner(m){$("banner").textContent=m;$("banner").hidden=false}
+
+/* ---------- excel export ---------- */
+let XLSXlib=null;
+function loadXLSX(){if(window.XLSX)return Promise.resolve(window.XLSX);return new Promise((res,rej)=>{const sc=document.createElement("script");
+  sc.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";sc.onload=()=>res(window.XLSX);sc.onerror=rej;document.head.appendChild(sc)})}
+const r2=v=>Math.round(v*100)/100;
+function buildWorkbook(X){
+  const wb=X.utils.book_new(),months=[...new Set(S.shifts.map(s=>mKey(s.date)))].sort(),overview=[];
+  months.forEach(k=>{
+    const [y,m]=k.split("-").map(Number),list=S.shifts.filter(s=>mKey(s.date)===k).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.in<b.in?-1:1);
+    const jobsIn=JOBS.filter(j=>list.some(s=>s.job===j.name));
+    const aoa=[[`Pay Tracker — ${MON[m-1]} ${y}`],[],["Hourly Rates"]];
+    jobsIn.forEach(j=>aoa.push([j.name,rateFor(j.name,k+"-"+pad(daysIn(k)))]));
+    aoa.push([]);const hdr=aoa.length;
+    aoa.push(["Date","Day","Job","In","Out","Break (min)","Paid Hrs","Rate","Earnings","Notes"]);
+    const first=aoa.length+1;
+    for(let d=1;d<=daysIn(k);d++){const ds=k+"-"+pad(d),day=list.filter(s=>s.date===ds),dn=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date(y,m-1,d).getDay()];
+      if(!day.length){aoa.push([`Day Off — ${MON[m-1].slice(0,3)} ${d} (${dn})`]);continue}
+      day.forEach(s=>{const c=calc(s),notes=[c.stat?"Stat holiday 1.5x":"",c.ot>0?`OT ${hrs(c.ot)} h at 1.5x`:"",s.date>todayStr?"Scheduled":""].filter(Boolean).join("; ");
+        aoa.push([`${MON[m-1].slice(0,3)} ${d}`,dn,s.job,fmt12(s.in),fmt12(s.out),c.brk,r2(c.paid),c.rate,r2(c.earn),notes])})}
+    const last=aoa.length;aoa.push([]);aoa.push(["Monthly Summary by Job"]);aoa.push(["Job","Total Hours","Total Earnings"]);
+    const sumStart=aoa.length+1;let th=0,te=0;
+    jobsIn.forEach(j=>{let h=0,e=0;list.filter(s=>s.job===j.name).forEach(s=>{const c=calc(s);h+=c.paid;e+=c.earn});th+=h;te+=e;aoa.push([j.name,r2(h),r2(e)])});
+    aoa.push(["TOTAL",r2(th),r2(te)]);
+    const ws=X.utils.aoa_to_sheet(aoa);
+    jobsIn.forEach((j,i)=>{const r=sumStart+i;ws["B"+r].f=`SUMIF($C$${first}:$C$${last},A${r},$G$${first}:$G$${last})`;ws["C"+r].f=`SUMIF($C$${first}:$C$${last},A${r},$I$${first}:$I$${last})`});
+    const tr=sumStart+jobsIn.length;if(jobsIn.length){ws["B"+tr].f=`SUM(B${sumStart}:B${tr-1})`;ws["C"+tr].f=`SUM(C${sumStart}:C${tr-1})`}
+    for(let r=first;r<=last;r++){const g=ws["G"+r],h=ws["H"+r],i=ws["I"+r];if(g)g.z="0.00";if(h)h.z='"$"#,##0.00';if(i){i.z='"$"#,##0.00';i.f=`ROUND(G${r}*H${r},2)`}}
+    for(let r=4;r<4+jobsIn.length;r++)if(ws["B"+r])ws["B"+r].z='"$"#,##0.00';
+    for(let r=sumStart;r<=tr;r++){if(ws["B"+r])ws["B"+r].z="0.00";if(ws["C"+r])ws["C"+r].z='"$"#,##0.00'}
+    ws["!cols"]=[{wch:30},{wch:12},{wch:18},{wch:7},{wch:7},{wch:11},{wch:9},{wch:9},{wch:11},{wch:26}];
+    X.utils.book_append_sheet(wb,ws,`${MON[m-1].slice(0,3)} ${y}`);
+    const row={Month:`${MON[m-1]} ${y}`};JOBS.forEach(j=>{let h=0,e=0;list.filter(s=>s.job===j.name).forEach(s=>{const c=calc(s);h+=c.paid;e+=c.earn});row[j.short+" hrs"]=r2(h);row[j.short+" $"]=r2(e)});
+    row["Total hrs"]=r2(list.reduce((a,s)=>a+calc(s).paid,0));row["Total $"]=r2(list.reduce((a,s)=>a+calc(s).earn,0));overview.push(row)});
+  const ov=X.utils.json_to_sheet(overview);ov["!cols"]=[{wch:16}].concat(Array(8).fill({wch:12}));
+  X.utils.book_append_sheet(wb,ov,"Overview");wb.SheetNames.unshift(wb.SheetNames.pop());
+  return wb}
+$("dlBtn").addEventListener("click",async()=>{const b=$("dlBtn");b.disabled=true;b.textContent="Preparing…";
+  try{const X=await loadXLSX(),buf=X.write(buildWorkbook(X),{bookType:"xlsx",type:"array"});
+    saveFile(`pay_tracker_${todayStr}.xlsx`,new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));toast("Excel file downloaded")}
+  catch(x){toast("Couldn't create the Excel file. Try again.")}
+  finally{b.disabled=false;b.textContent="↓ Download Excel"}});
+function saveFile(name,blob){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+
+/* ---------- backup ---------- */
+$("bkDown").addEventListener("click",()=>{const data={app:"pay-tracker",exported:new Date().toISOString(),rates,shifts:S.shifts.map(({date,job,in:i,out:o})=>({date,job,in:i,out:o}))};
+  saveFile(`pay_tracker_backup_${todayStr}.json`,new Blob([JSON.stringify(data,null,1)],{type:"application/json"}));toast("Backup downloaded")});
+$("bkUp").addEventListener("click",()=>$("bkFile").click());
+$("bkFile").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
+  try{const d=JSON.parse(await f.text());if(!Array.isArray(d.shifts))throw 0;
+    const have=new Set(S.shifts.map(s=>s.date+"|"+s.job));
+    const rows=d.shifts.filter(s=>s.date&&JOB[s.job]&&s.in&&s.out).map(s=>({date:s.date,job:s.job,time_in:normT(s.in),time_out:normT(s.out)}))
+      .filter(r=>{const k=r.date+"|"+r.job;if(have.has(k))return false;have.add(k);return true}).map(r=>({...r,user_id:S.user.id}));
+    const rr=[];Object.entries(d.rates||{}).forEach(([job,list])=>(list||[]).forEach(x=>{if(JOB[job]&&x.from&&x.rate)rr.push({user_id:S.user.id,job,effective_from:x.from,rate:Number(x.rate)})}));
+    if(rr.length){const {error}=await sb.from("rates").upsert(rr,{onConflict:"user_id,job,effective_from"});if(error)throw error}
+    for(let i=0;i<rows.length;i+=200){const {error}=await sb.from("shifts").insert(rows.slice(i,i+200));if(error)throw error}
+    await loadAll();toast(`Imported ${rows.length} shift${rows.length===1?"":"s"}`)}
+  catch(x){toast("That file couldn't be imported. Use a Pay Tracker backup (.json).")}});
+
+/* ---------- data + auth ---------- */
+const CFG=window.PAY_TRACKER_CONFIG||{};
+const configured=CFG.supabaseUrl&&CFG.supabaseAnonKey&&!/YOUR_/.test(CFG.supabaseUrl+CFG.supabaseAnonKey);
+const sb=configured&&window.supabase?window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey):null;
+async function loadAll(){
+  const [a,b]=await Promise.all([sb.from("shifts").select("id,date,job,time_in,time_out").order("date").limit(10000),sb.from("rates").select("job,effective_from,rate")]);
+  if(a.error||b.error){banner("Couldn't load your shifts. Check your connection and reload the page.");return}
+  $("banner").hidden=true;
+  rates={};b.data.forEach(r=>(rates[r.job]=rates[r.job]||[]).push({from:r.effective_from,rate:Number(r.rate)}));
+  S.shifts=a.data.map(x=>({id:x.id,date:x.date,job:x.job,in:normT(x.time_in),out:normT(x.time_out)}));
+  S.loaded=true;$("dlBtn").hidden=!S.shifts.length;
+  if(!b.data.length)banner("Add your pay rates under “Pay rates & break rules”, or import your backup file there, so earnings can be worked out.");
+  syncForm();render()}
+function showApp(user){S.user=user;$("authScreen").hidden=true;$("app").hidden=false;$("whoEmail").textContent=user.email||"";loadAll()}
+function showAuth(){S.user=null;S.shifts=[];rates={};$("app").hidden=true;$("authScreen").hidden=false}
+const aMsg=(id,m)=>{["aErr","aOk"].forEach(x=>$(x).hidden=true);if(m){$(id).textContent=m;$(id).hidden=false}};
+$("authForm").addEventListener("submit",async e=>{e.preventDefault();const email=$("aEmail").value.trim(),password=$("aPass").value;
+  if(!email||!password)return aMsg("aErr","Enter your email and password.");
+  $("aSignIn").disabled=true;const {error}=await sb.auth.signInWithPassword({email,password});$("aSignIn").disabled=false;
+  if(error)aMsg("aErr",/confirm/i.test(error.message)?"Confirm your email first. Check your inbox for the link.":"That email and password don't match. Try again.")});
+$("aSignUp").addEventListener("click",async()=>{const email=$("aEmail").value.trim(),password=$("aPass").value;
+  if(!email||password.length<6)return aMsg("aErr","Enter your email and a password of at least 6 characters.");
+  $("aSignUp").disabled=true;const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});$("aSignUp").disabled=false;
+  if(error)return aMsg("aErr",/not allowed|disabled/i.test(error.message)?"New accounts are turned off for this tracker.":error.message);
+  if(data.session)return;aMsg("aOk","Account created. Check your email for a confirmation link, then sign in here.")});
+$("signOut").addEventListener("click",()=>sb.auth.signOut());
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&S.user)loadAll()});
+
+/* ---------- boot ---------- */
+syncForm();render();
+if(!sb){$("authScreen").hidden=false;$("authForm").innerHTML='<div class="who"><span class="eyebrow">Setup needed</span><h1>Pay Tracker</h1></div><p>Add your Supabase project URL and anon key to <b>config.js</b>, then reload this page. The setup steps are in README.md.</p>'}
+else{
+  sb.auth.onAuthStateChange((ev,session)=>{if(session&&session.user){if(!S.user||S.user.id!==session.user.id)showApp(session.user)}else showAuth()});
+  sb.auth.getSession().then(({data})=>{if(data.session)showApp(data.session.user);else showAuth()});
+}
+</script>
+</body>
+</html>

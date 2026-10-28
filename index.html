@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Pay Tracker</title>
+<script>try{var t=localStorage.getItem("pt-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <meta name="theme-color" content="#1d4fa8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -47,6 +48,8 @@ button{cursor:pointer}
 .top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
 .top .who{display:flex;flex-direction:column;gap:6px}
 .topctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.themebtn{min-width:92px}
+.auththeme{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px))}
 .authwrap{min-height:100vh;display:grid;place-items:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .authcard{width:100%;max-width:380px}
 .authcard .btn{flex:none;width:100%}
@@ -232,6 +235,7 @@ details[open] summary .chev{transform:rotate(90deg)}
       <span class="hint"><span id="whoEmail"></span> · <button class="signout" id="signOut" type="button">Sign out</button></span>
     </div>
     <div class="topctl">
+    <button class="btn dl themebtn" id="themeBtn" type="button" aria-label="Theme: follows your device. Click to change."><span aria-hidden="true" id="themeIcon">◐</span> <span id="themeLabel">Auto</span></button>
     <button class="btn dl" id="dlBtn" type="button" hidden>↓ Download Excel</button>
     <button class="btn dl" id="ulBtn" type="button">↑ Upload Excel</button>
     <input type="file" id="ulFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
@@ -862,6 +866,16 @@ $("aSignUp").addEventListener("click",async()=>{const email=$("aEmail").value.tr
   if(data.session)return;aMsg("aOk","Account created. Check your email for a confirmation link, then sign in here.")});
 $("signOut").addEventListener("click",()=>sb.auth.signOut());
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&S.user)loadAll()});
+
+/* ---------- theme ---------- */
+const THEMES=[{k:"auto",icon:"◐",label:"Auto",say:"follows your device"},{k:"light",icon:"☀",label:"Light",say:"light"},{k:"dark",icon:"☾",label:"Dark",say:"dark"}];
+function getTheme(){try{return localStorage.getItem("pt-theme")||"auto"}catch(e){return "auto"}}
+function applyTheme(k){const r=document.documentElement;if(k==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",k);
+  try{if(k==="auto")localStorage.removeItem("pt-theme");else localStorage.setItem("pt-theme",k)}catch(e){}
+  const t=THEMES.find(x=>x.k===k)||THEMES[0];$("themeIcon").textContent=t.icon;$("themeLabel").textContent=t.label;
+  $("themeBtn").setAttribute("aria-label",`Theme: ${t.say}. Click to change.`)}
+$("themeBtn").addEventListener("click",()=>{const i=THEMES.findIndex(x=>x.k===getTheme());const n=THEMES[(i+1)%THEMES.length];applyTheme(n.k);toast(n.k==="auto"?"Theme follows your device":`${n.label} mode`)});
+applyTheme(getTheme());
 
 /* ---------- boot ---------- */
 syncForm();render();refreshFx();

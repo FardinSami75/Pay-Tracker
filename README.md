@@ -47,6 +47,9 @@ Only the code is in this repository. No shift or pay data is stored here.
   - **Mercor:** add rows at the bottom of the Mercor sheet with Date (YYYY-MM-DD), Project, Hours and Rate (USD). Bonus, bonus note and exchange rate are optional. A missing exchange rate is looked up.
   - An existing shift for the same job and date gets updated. Deleting a row in Excel does **not** delete anything on the site.
 
+### Look
+- **Theme button** (◐ Auto / ☀ Light / ☾ Dark) at the top. Auto follows your phone's or computer's setting. Your choice is remembered on each device.
+
 ### Backups and account
 - **Download backup / Import backup** (under *Pay rates & break rules*) saves or restores everything as a `.json` file.
 - Email and password sign-in. Each account can only see its own data, and new sign-ups are turned off in Supabase.
@@ -127,6 +130,7 @@ All tables use row-level security, so each signed-in user only sees their own ro
 
 | Date | Change |
 |---|---|
+| 2026-10-27 | **Theme button:** switch between Auto (follows the device), Light and Dark. Remembered per device. |
 | 2026-10-27 | **Mercor added:** logging by project with US$ rates, flat or per-hour bonuses, automatic US$→CA$ conversion (editable per entry), a US$ and CA$ summary, a by-project breakdown, weekly Wednesday paydays, Mercor in charts and totals, and a Mercor sheet in the Excel download and upload. New `mercor_tasks` table. This README became the project guide. |
 | 2026-10-24 | **Excel upload:** add or update many shifts at once from a filled-in Excel file, with a preview. The Excel download now includes every month up to next month. |
 | 2026-10-24 | **Paydays:** next-pay cards, a monthly payday table, and a Paydays sheet in Excel. University weekend paydays move to the Friday before. |

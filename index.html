@@ -3,210 +3,253 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Pay Tracker</title>
+<title>Grind</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Grind">
+<meta name="application-name" content="Grind">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <script>try{var t=localStorage.getItem("pt-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
-<meta name="theme-color" content="#1d4fa8">
+<meta name="theme-color" content="#f3f4f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0d11" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
 <style>
-/* Layout: timesheet ledger — summary strip, entry card beside the charts, then the month's punch list */
+/* Layout: one calm centred column, like a banking app. Tabs split the app into Home / Shifts / Mercor / Paydays / More.
+   One typeface, soft white cards on light grey, one blue accent; job colours only on dots and charts. */
 :root{
-  --bg:#f2f4f7; --surface:#ffffff; --surface-2:#e9edf2; --line:#d5dbe3;
-  --ink:#141c27; --ink-2:#4a5566; --ink-3:#768195;
-  --accent:#1d4fa8; --accent-ink:#ffffff; --danger:#b42318; --ok:#1f7a4d;
+  --bg:#f3f4f7; --surface:#ffffff; --surface-2:#f2f4f7; --line:#e6e9ee; --line-strong:#d4d9e1;
+  --ink:#12161d; --ink-2:#5a6271; --ink-3:#8d95a3;
+  --accent:#3457d5; --accent-ink:#ffffff; --accent-soft:#eaefff;
+  --good:#16794c; --good-soft:#e6f5ed; --danger:#c0362c; --danger-soft:#fdeceb;
   --job-av:#2a78d6; --job-win:#eb6834; --job-stamp:#1baf7a; --job-mer:#682dac;
-  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
-  --r:10px;
+  --shadow:0 1px 2px rgba(18,22,29,.04),0 6px 24px rgba(18,22,29,.06);
+  --f:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:18px; --r-sm:12px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0e131a; --surface:#161d27; --surface-2:#1e2733; --line:#2b3644;
-  --ink:#e8edf4; --ink-2:#a9b4c4; --ink-3:#7c889a;
-  --accent:#6f9cf0; --accent-ink:#0b1220; --danger:#f0786b; --ok:#5cc690;
-  --job-av:#3987e5; --job-win:#d95926; --job-stamp:#199e70; --job-mer:#9a44bc; color-scheme:dark}}
+  --bg:#0b0d11; --surface:#15191f; --surface-2:#1c2129; --line:#242a33; --line-strong:#323a46;
+  --ink:#eef1f5; --ink-2:#a3abb8; --ink-3:#717a88;
+  --accent:#7d97ff; --accent-ink:#0b0d11; --accent-soft:#1d2540;
+  --good:#4fc98b; --good-soft:#12291e; --danger:#f2786d; --danger-soft:#33191a;
+  --job-av:#3987e5; --job-win:#d95926; --job-stamp:#199e70; --job-mer:#9a44bc;
+  --shadow:0 0 0 1px #20262f; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0e131a; --surface:#161d27; --surface-2:#1e2733; --line:#2b3644;
-  --ink:#e8edf4; --ink-2:#a9b4c4; --ink-3:#7c889a;
-  --accent:#6f9cf0; --accent-ink:#0b1220; --danger:#f0786b; --ok:#5cc690;
-  --job-av:#3987e5; --job-win:#d95926; --job-stamp:#199e70; --job-mer:#9a44bc; color-scheme:dark}
+  --bg:#0b0d11; --surface:#15191f; --surface-2:#1c2129; --line:#242a33; --line-strong:#323a46;
+  --ink:#eef1f5; --ink-2:#a3abb8; --ink-3:#717a88;
+  --accent:#7d97ff; --accent-ink:#0b0d11; --accent-soft:#1d2540;
+  --good:#4fc98b; --good-soft:#12291e; --danger:#f2786d; --danger-soft:#33191a;
+  --job-av:#3987e5; --job-win:#d95926; --job-stamp:#199e70; --job-mer:#9a44bc;
+  --shadow:0 0 0 1px #20262f; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
-.wrap{max-width:1120px;margin:0 auto;padding-block:20px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
-.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
-h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
-h1{font-size:30px;font-weight:800;font-stretch:80%;letter-spacing:-.01em;line-height:1}
-h2{font-size:18px;font-weight:700;font-stretch:88%}
-.eyebrow{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:22px}
+h2{font-size:17px}
+.num{font-variant-numeric:tabular-nums}
+.eyebrow{font-size:13px;font-weight:500;color:var(--ink-3)}
+.hint{font-size:13px;color:var(--ink-3)}
+.err{font-size:13px;color:var(--danger)}
+.ok{font-size:13px;color:var(--good)}
 
-/* header */
-.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
-.top .who{display:flex;flex-direction:column;gap:6px}
-.topctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.themebtn{min-width:92px}
-.auththeme{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px))}
-.authwrap{min-height:100vh;display:grid;place-items:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.authcard{width:100%;max-width:380px}
-.authcard .btn{flex:none;width:100%}
-input[type=email],input[type=password]{width:100%;height:42px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:15px}
-.ok{font-size:13px;color:var(--ok)}
-.backup{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
-.signout{border:0;background:transparent;color:var(--ink-3);font-size:12px;font-weight:600;padding:0;text-decoration:underline;text-underline-offset:2px}
-.btn.dl{height:46px;border-radius:999px}
-.btn.dl:disabled{opacity:.6;cursor:default}
-.monthnav{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px}
-.monthnav button{border:0;background:transparent;width:36px;height:36px;border-radius:999px;font-size:18px;color:var(--ink-2)}
+/* page frame */
+.wrap{max-width:780px;margin:0 auto;padding-block:14px 120px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:env(safe-area-inset-top,0px)}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:36px;height:36px;border-radius:10px;flex:none}
+.brandtext{display:flex;flex-direction:column}
+.monthnav{display:flex;align-items:center;gap:2px;background:var(--surface);border-radius:999px;padding:3px;box-shadow:var(--shadow)}
+.monthnav button{border:0;background:transparent;width:34px;height:34px;border-radius:999px;font-size:18px;line-height:1;color:var(--ink-2)}
 .monthnav button:hover:not(:disabled){background:var(--surface-2);color:var(--ink)}
 .monthnav button:disabled{opacity:.3;cursor:default}
-.monthnav .label{font-family:var(--f-display);font-weight:700;font-stretch:85%;font-size:17px;min-width:128px;text-align:center}
+.monthnav .label{font-weight:600;font-size:15px;min-width:92px;text-align:center}
 
-/* summary strip */
-.strip{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
-.strip>div{padding:14px 18px;display:flex;flex-direction:column;gap:2px;min-width:0}
-.strip>div+div{border-left:1px solid var(--line)}
-.strip .big{font-family:var(--f-display);font-weight:800;font-stretch:78%;font-size:34px;line-height:1.1;font-variant-numeric:tabular-nums}
-.strip .mid{font-family:var(--f-display);font-weight:700;font-stretch:80%;font-size:24px;line-height:1.2;font-variant-numeric:tabular-nums}
-.strip .sub{font-size:12px;color:var(--ink-3)}
-@media (max-width:700px){.strip{grid-template-columns:1fr 1fr}.strip>div:nth-child(3){border-left:0}.strip>div:nth-child(n+3){border-top:1px solid var(--line)}}
+/* tabs: inline under the header on wide screens, a bottom bar on phones */
+.tabs{display:flex;gap:4px;background:var(--surface);border-radius:999px;padding:4px;box-shadow:var(--shadow);position:sticky;top:calc(8px + env(safe-area-inset-top,0px));z-index:15}
+.tabs button{flex:1;border:0;background:transparent;border-radius:999px;padding:9px 6px;font-weight:600;font-size:14px;color:var(--ink-2);display:flex;align-items:center;justify-content:center;gap:6px}
+.tabs button svg{width:18px;height:18px;flex:none}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--surface)}
+.tabs button:hover:not([aria-selected="true"]){color:var(--ink)}
+@media (max-width:640px){
+  .tabs{position:fixed;left:0;right:0;bottom:0;top:auto;border-radius:0;box-shadow:0 -1px 0 var(--line);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));gap:0}
+  .tabs button{flex-direction:column;gap:2px;font-size:11px;padding:6px 2px;border-radius:12px}
+  .tabs button svg{width:22px;height:22px}
+  .tabs button[aria-selected="true"]{background:transparent;color:var(--accent)}
+}
+.panel{display:flex;flex-direction:column;gap:16px}
 
-/* main grid */
-.grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
-@media (max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+/* cards */
+.card{background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px;min-width:0}
 .card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.section-title{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:4px 4px 0}
 
-/* form */
+/* home hero */
+.hero{gap:18px}
+.hero .big{font-size:44px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.hero .sub{font-size:14px;color:var(--ink-2)}
+.minis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.minis>div{background:var(--surface-2);border-radius:var(--r-sm);padding:12px 14px;display:flex;flex-direction:column;min-width:0}
+.minis .mid{font-size:20px;font-weight:700;line-height:1.3}
+.minis .sub{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:420px){.hero .big{font-size:38px}.minis .mid{font-size:18px}.minis>div{padding:10px 12px}}
+
+/* next pay */
+.nextpay{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.np{background:var(--surface);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px;min-width:0}
+.np.first{background:var(--ink);color:var(--surface)}
+.np.first .eyebrow,.np.first .per{color:color-mix(in srgb,var(--surface) 65%,transparent)}
+.np .amt{font-size:26px;font-weight:800;letter-spacing:-.01em;line-height:1.25}
+.np .when{font-weight:600;font-size:14px}
+.np .per{font-size:12px;color:var(--ink-3)}
+
+/* forms */
 form{display:flex;flex-direction:column;gap:14px}
-.field{display:flex;flex-direction:column;gap:5px;min-width:0}
-.field>label,.field>.lbl{font-size:12px;font-weight:600;color:var(--ink-2)}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.field>.lbl{font-size:13px;font-weight:600;color:var(--ink-2)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-input[type=date],input[type=time],input[type=number],select{width:100%;min-width:0;height:42px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-family:var(--f-mono);font-size:15px}
-input:focus,select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
-.jobs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.jobs button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 6px;font-size:13px;font-weight:600;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;line-height:1.2}
-.jobs button .dot{width:10px;height:10px;border-radius:50%}
-.jobs button[aria-pressed=true]{border-color:var(--ink);background:var(--surface);box-shadow:inset 0 0 0 1px var(--ink)}
-.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:8px}
-.facts>div{padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
-.facts>div+div{border-left:1px solid var(--line)}
+input[type=date],input[type=time],input[type=number],input[type=text],input[type=email],input[type=password],select{width:100%;min-width:0;height:46px;padding:0 14px;border:1px solid transparent;border-radius:var(--r-sm);background:var(--surface-2);font-size:16px;transition:border-color .15s,background .15s}
+input:focus,select:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+input:disabled{opacity:.5}
+.jobs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.jobs button{border:1px solid transparent;background:var(--surface-2);border-radius:var(--r-sm);padding:11px 8px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
+.jobs button .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.jobs button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.facts>div{display:flex;flex-direction:column;min-width:0}
 .facts b{font-size:15px;font-weight:600}
-.pill{font-family:var(--f-mono);font-size:11px;letter-spacing:.04em;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);background:var(--surface-2);white-space:nowrap}
-button.pill{background:transparent}
-button.pill:hover{color:var(--ink);border-color:var(--ink-3)}
-.check{display:flex;align-items:center;gap:8px;font-size:14px}
-.check input{width:18px;height:18px;accent-color:var(--accent)}
-.preview{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:12px 14px;border-radius:8px;background:var(--surface-2);flex-wrap:wrap}
-.preview .amt{font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:26px;font-variant-numeric:tabular-nums}
-.preview .detail{font-family:var(--f-mono);font-size:12px;color:var(--ink-2)}
+.preview{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:14px 16px;border-radius:var(--r-sm);background:var(--surface-2)}
+.preview .amt{font-size:26px;font-weight:800;letter-spacing:-.01em}
+.preview .detail{font-size:13px;color:var(--ink-2)}
+.replace{font-size:13px;color:var(--ink-2);padding:10px 14px;border-radius:var(--r-sm);background:var(--accent-soft)}
 .actions{display:flex;gap:8px}
-.btn{height:44px;border-radius:8px;border:1px solid var(--line);background:var(--surface);padding:0 16px;font-weight:600}
-.btn.primary{flex:1;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.btn.primary:disabled{opacity:.5;cursor:default}
-.btn:hover:not(:disabled){filter:brightness(1.06)}
-.hint{font-size:12px;color:var(--ink-3)}
-.replace{font-size:13px;color:var(--ink-2);padding:8px 12px;border-radius:8px;border:1px dashed var(--accent)}
-.err{font-size:13px;color:var(--danger)}
+.btn{height:46px;border-radius:999px;border:0;background:var(--surface-2);padding:0 18px;font-weight:600;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.btn:hover:not(:disabled){filter:brightness(.97)}
+.btn.primary{flex:1;background:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.07)}
+.btn:disabled{opacity:.5;cursor:default}
+.pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
 
-/* charts */
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--bg)}
-.seg button{border:0;background:transparent;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;color:var(--ink-2)}
-.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
-.pies{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media (max-width:520px){.pies{grid-template-columns:1fr}}
+/* segmented control */
+.seg{display:inline-flex;background:var(--surface-2);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* donuts */
+.pies{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .pie{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
-.pie svg{width:100%;max-width:200px;height:auto;display:block}
-.pie svg path{cursor:default;transition:opacity .15s}
-.pie svg path:hover{opacity:.85}
-.pie .cap{font-size:12px;font-weight:600;color:var(--ink-2)}
-.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:6px;white-space:nowrap;z-index:5;font-family:var(--f-mono)}
-.empty-pie{width:100%;max-width:200px;aspect-ratio:1;border-radius:50%;border:2px dashed var(--line);display:grid;place-items:center;color:var(--ink-3);font-size:12px;text-align:center;padding:20px}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th{font-size:11px;font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:500;text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
-th:first-child,td:first-child{text-align:left;padding-left:0}
-td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
-td:first-child{font-family:var(--f-body);font-weight:500}
-tr.total td{border-bottom:0;font-weight:600}
-.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:baseline}
+.pie svg{width:100%;max-width:170px;height:auto;display:block}
+.pie .cap{font-size:13px;font-weight:600;color:var(--ink-2);text-align:center}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12px;padding:6px 10px;border-radius:8px;white-space:nowrap;z-index:5}
+.empty-pie{width:100%;max-width:170px;aspect-ratio:1;border-radius:50%;border:14px solid var(--surface-2);display:grid;place-items:center;color:var(--ink-3);font-size:12px;text-align:center;padding:16px}
+
+/* tables */
 .tablewrap{overflow-x:auto}
-.mgrid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
-@media (max-width:880px){.mgrid{grid-template-columns:minmax(0,1fr)}}
-#mForm{display:flex;flex-direction:column;gap:14px}
-.mstats{display:flex;flex-direction:column;gap:14px;min-width:0}
-.mtiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:8px}
-.mtiles>div{padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
-.mtiles>div+div{border-left:1px solid var(--line)}
-.mtiles .v{font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:22px;font-variant-numeric:tabular-nums;line-height:1.15;overflow-wrap:anywhere}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:12px;color:var(--ink-3);font-weight:500;text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+th:last-child,td:last-child{padding-right:0}
+td{padding:11px 8px;border-bottom:1px solid var(--line);text-align:right}
+td:first-child{font-weight:500}
+tr:last-child td{border-bottom:0}
+tr.total td{font-weight:700;border-top:1px solid var(--line-strong)}
+.sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:middle}
+.paylist{display:flex;flex-direction:column}
+.payrow{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.payrow:first-child{border-top:0;padding-top:0}
+.pd{display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.pd b{font-size:20px;font-weight:700}
+.pd span{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3)}
+.pjob{display:flex;align-items:center;gap:8px;font-weight:600;flex-wrap:wrap}
+.pjob .sw{margin-right:0}
+.pamt{display:flex;flex-direction:column;align-items:flex-end}
+.pamt b{font-size:16px;font-weight:700}
+.paytotal{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line-strong);padding-top:12px;margin-top:4px;font-weight:600}
+.paytotal b{font-size:18px}
+
+/* lists of shifts / entries */
+.list{display:flex;flex-direction:column}
+.day{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.day:first-child{border-top:0;padding-top:0}
+.day .d{display:flex;flex-direction:column;align-items:center;line-height:1.1;padding-top:4px}
+.day .d b{font-size:20px;font-weight:700}
+.day .d span{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3)}
+.shifts{display:flex;flex-direction:column;gap:4px;min-width:0}
+.shift{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:8px 10px;margin:0 -10px;border-radius:var(--r-sm)}
+.shift:hover{background:var(--surface-2)}
+.shift.editing{background:var(--accent-soft)}
+.shift .job{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;min-width:0;flex-wrap:wrap}
+.shift .job .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.shift .times{font-size:13px;color:var(--ink-3);grid-column:1}
+.shift .money{grid-column:2;grid-row:1/3;text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.shift .money b{font-weight:700;font-size:15px}
+.shift .money span{font-size:12px;color:var(--ink-3)}
+.shift .ops{grid-column:1/-1;display:none;gap:2px;justify-content:flex-start;align-items:center;flex-wrap:wrap;margin-left:-6px}
+.tag{font-size:11px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
+.tag.sched{background:transparent;box-shadow:inset 0 0 0 1px var(--line-strong)}
+.tag.ot{background:var(--accent-soft);color:var(--accent)}
+.shift{cursor:pointer}
+.shift.open .ops,.shift.editing .ops,.shift:focus-within .ops{display:flex}
+@media (hover:hover){.shift:hover .ops{display:flex}}
+#themeIcon{display:none}
+.linkbtn{border:0;background:transparent;color:var(--ink-3);font-size:13px;font-weight:600;padding:4px 6px;border-radius:8px}
+.linkbtn:hover{color:var(--ink);background:var(--surface-2)}
+.linkbtn.danger{color:var(--danger)}
+.blank{padding:28px 8px;text-align:center;color:var(--ink-3)}
+.status{font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.status.up{background:var(--accent-soft);color:var(--accent)}
+.status.today{background:var(--good-soft);color:var(--good)}
+
+/* mercor */
+.mgrid{display:flex;flex-direction:column;gap:16px}
+.mstats{display:flex;flex-direction:column;gap:16px;min-width:0}
+.mtiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mtiles>div{background:var(--surface-2);border-radius:var(--r-sm);padding:12px 14px;display:flex;flex-direction:column;min-width:0}
+.mtiles .v{font-size:20px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
 .mtiles .s{font-size:12px;color:var(--ink-3)}
-@media (max-width:440px){.mtiles{grid-template-columns:1fr}.mtiles>div+div{border-left:0;border-top:1px solid var(--line)}}
-input[type=text]{width:100%;min-width:0;height:42px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:15px}
-.merlist .shift{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 110px 120px}
-@media (max-width:760px){.merlist .shift{grid-template-columns:minmax(0,1fr) auto}}
-.setupnote{font-size:14px;color:var(--ink-2);border:1px dashed var(--line);border-radius:8px;padding:12px 14px}
-.importbox{border-color:var(--accent)}
+@media (max-width:480px){.mtiles{grid-template-columns:1fr 1fr}.mtiles>div:first-child{grid-column:1/-1}}
+.setupnote{font-size:14px;color:var(--ink-2);background:var(--surface-2);border-radius:var(--r-sm);padding:14px 16px}
+
+/* more tab */
+.settings{display:flex;flex-direction:column}
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.setrow:first-child{border-top:0;padding-top:0}
+.setrow:last-child{padding-bottom:0}
+.setrow .t{display:flex;flex-direction:column;min-width:0}
+.setrow .t b{font-weight:600}
+.setrow .btns{display:flex;gap:8px;flex-wrap:wrap}
+.rates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.rates{grid-template-columns:1fr}}
+.rate{background:var(--surface-2);border-radius:var(--r-sm);padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.rate .now{font-size:20px;font-weight:700}
+.rate ul{margin:0;padding:0;list-style:none;font-size:12px;color:var(--ink-3)}
+.addrate{display:grid;grid-template-columns:1.3fr 1fr 1.2fr auto;gap:8px;align-items:end}
+@media (max-width:640px){.addrate{grid-template-columns:1fr 1fr}.addrate .btn{grid-column:1/-1}}
+.rules{margin:0;padding-left:18px;font-size:14px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px}
+.signout{border:0;background:transparent;color:var(--danger);font-weight:600;padding:0}
+
+/* banners, import, toast */
+.banner{background:var(--danger-soft);color:var(--ink);border-radius:var(--r-sm);padding:12px 16px;font-size:14px}
+.importbox{box-shadow:0 0 0 2px var(--accent),var(--shadow)}
 .importbox ul{margin:0;padding-left:18px;font-size:14px;color:var(--ink-2)}
 #importListWrap{max-height:320px;overflow:auto}
 #importList td{font-size:13px}
-.nextpay{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.np{border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:3px;min-width:0}
-.np.first{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
-.np .amt{font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:28px;line-height:1.15;font-variant-numeric:tabular-nums}
-.np .when{font-weight:600;font-size:14px}
-.np .per{font-family:var(--f-mono);font-size:12px;color:var(--ink-3)}
-.status{font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
-.status.up{color:var(--accent);border-color:var(--accent)}
-.status.today{color:var(--ok);border-color:var(--ok)}
-#payTable td:nth-child(2){font-family:var(--f-body);text-align:left}
-#payTable th:nth-child(2){text-align:left}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600;z-index:30;white-space:nowrap}
+@media (min-width:641px){.toast{bottom:24px}}
 
-/* shift list */
-.list{display:flex;flex-direction:column}
-.day{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid var(--line)}
-.day:first-child{border-top:0}
-.day .d{display:flex;flex-direction:column;line-height:1.1}
-.day .d b{font-family:var(--f-display);font-weight:800;font-stretch:78%;font-size:24px}
-.day .d span{font-size:11px;font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3)}
-.shifts{display:flex;flex-direction:column;gap:8px;min-width:0}
-.shift{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 96px 120px;gap:4px 12px;align-items:center;padding:8px 10px;border-radius:8px;border:1px solid transparent}
-.shift:hover{background:var(--surface-2)}
-.shift.editing{border-color:var(--accent);background:var(--surface-2)}
-.shift .job{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;min-width:0;flex-wrap:wrap}
-.shift .job .dot{width:10px;height:10px;border-radius:50%;flex:none}
-.shift .times{font-family:var(--f-mono);font-size:13px;color:var(--ink-2)}
-.shift .money{text-align:right;display:flex;flex-direction:column;align-items:flex-end}
-.shift .money b{font-family:var(--f-mono);font-weight:600;font-size:14px}
-.shift .money span{font-family:var(--f-mono);font-size:12px;color:var(--ink-3)}
-.shift .ops{display:flex;gap:4px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
-.tag{font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--ink-2)}
-.tag.sched{border-style:dashed}
-.tag.ot{color:var(--accent);border-color:var(--accent)}
-.linkbtn{border:0;background:transparent;color:var(--ink-3);font-size:12px;font-weight:600;padding:4px 6px;border-radius:6px}
-.linkbtn:hover{color:var(--ink);background:var(--surface)}
-.linkbtn.danger{color:var(--danger)}
-@media (max-width:760px){.shift{grid-template-columns:minmax(0,1fr) auto}.shift .times{grid-column:1;grid-row:2}.shift .money{grid-row:1/3;grid-column:2}.shift .ops{grid-column:1/-1;grid-row:3}}
-@media (max-width:440px){.strip .big{font-size:27px}.strip .mid{font-size:21px}.strip>div{padding:12px 14px}}
-.blank{padding:28px 8px;text-align:center;color:var(--ink-3)}
-
-/* rates */
-details summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
-details summary::-webkit-details-marker{display:none}
-details summary .chev{transition:transform .2s;color:var(--ink-3)}
-details[open] summary .chev{transform:rotate(90deg)}
-.rates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
-@media (max-width:700px){.rates{grid-template-columns:1fr}}
-.rate{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px}
-.rate .now{font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:22px}
-.rate ul{margin:0;padding:0;list-style:none;font-family:var(--f-mono);font-size:12px;color:var(--ink-2)}
-.addrate{display:grid;grid-template-columns:1.3fr 1fr 1.2fr auto;gap:8px;align-items:end;margin-top:14px}
-@media (max-width:700px){.addrate{grid-template-columns:1fr 1fr}}
-.rules{font-size:13px;color:var(--ink-2);margin:10px 0 0;padding-left:18px}
-
-.banner{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--danger);border-radius:8px;padding:12px 14px;font-size:14px}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:20;transition:opacity .2s}
+/* sign-in */
+.authwrap{min-height:100vh;display:grid;place-items:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.authcard{width:100%;max-width:380px;padding:28px}
+.authcard .logo{width:48px;height:48px;border-radius:12px}
+.authcard .btn{flex:none;width:100%}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
@@ -216,7 +259,7 @@ details[open] summary .chev{transform:rotate(90deg)}
 
 <div class="authwrap" id="authScreen" hidden>
   <form class="card authcard" id="authForm" novalidate>
-    <div class="who"><span class="eyebrow">AV/IT · Winners · Stampede</span><h1>Pay Tracker</h1></div>
+    <div class="brand"><img src="icon.svg" alt="" class="logo" width="48" height="48"><div class="brandtext"><h1>Grind</h1><span class="hint">AV/IT · Winners · Stampede · Mercor</span></div></div>
     <p class="hint" id="authIntro">Sign in to see and log your shifts.</p>
     <div class="field"><label for="aEmail">Email</label><input type="email" id="aEmail" autocomplete="email" required></div>
     <div class="field"><label for="aPass">Password</label><input type="password" id="aPass" autocomplete="current-password" minlength="6" required></div>
@@ -229,40 +272,61 @@ details[open] summary .chev{transform:rotate(90deg)}
 
 <div class="wrap" id="app" hidden>
   <header class="top">
-    <div class="who">
-      <span class="eyebrow">AV/IT · Winners · Stampede</span>
-      <h1>Pay Tracker</h1>
-      <span class="hint"><span id="whoEmail"></span> · <button class="signout" id="signOut" type="button">Sign out</button></span>
-    </div>
-    <div class="topctl">
-    <button class="btn dl themebtn" id="themeBtn" type="button" aria-label="Theme: follows your device. Click to change."><span aria-hidden="true" id="themeIcon">◐</span> <span id="themeLabel">Auto</span></button>
-    <button class="btn dl" id="dlBtn" type="button" hidden>↓ Download Excel</button>
-    <button class="btn dl" id="ulBtn" type="button">↑ Upload Excel</button>
-    <input type="file" id="ulFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+    <div class="brand"><img src="icon.svg" alt="" class="logo" width="36" height="36"><h1>Grind</h1></div>
     <nav class="monthnav" aria-label="Month">
       <button id="prevM" aria-label="Previous month">‹</button>
       <span class="label" id="mLabel">—</span>
       <button id="nextM" aria-label="Next month">›</button>
     </nav>
-    </div>
   </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button role="tab" data-tab="shifts" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Shifts</button>
+    <button role="tab" data-tab="mercor" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>Mercor</button>
+    <button role="tab" data-tab="paydays" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>Paydays</button>
+    <button role="tab" data-tab="more" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>More</button>
+  </nav>
 
   <div id="banner" class="banner" hidden></div>
   <section class="card importbox" id="importBox" hidden aria-labelledby="importTitle">
-    <div class="card-head"><h2 id="importTitle">Add shifts from Excel</h2><span class="hint" id="importFile"></span></div>
+    <div class="card-head"><h2 id="importTitle">Add from Excel</h2><span class="hint" id="importFile"></span></div>
     <div id="importSummary"></div>
     <div class="tablewrap" id="importListWrap"><table id="importList"></table></div>
     <div class="actions"><button class="btn" type="button" id="importCancel">Cancel</button><button class="btn primary" type="button" id="importGo">Add shifts</button></div>
   </section>
 
-  <section class="strip" aria-label="Month summary">
-    <div><span class="eyebrow">Earnings</span><span class="big" id="sEarn">$0.00</span><span class="sub" id="sEarnSub">Loading your shifts…</span></div>
-    <div><span class="eyebrow">Paid hours</span><span class="mid" id="sHrs">0.00</span><span class="sub" id="sHrsSub">&nbsp;</span></div>
-    <div><span class="eyebrow">Shifts</span><span class="mid" id="sShifts">0</span><span class="sub" id="sShiftsSub">&nbsp;</span></div>
-    <div><span class="eyebrow">Days off</span><span class="mid" id="sOff">0</span><span class="sub" id="sOffSub">&nbsp;</span></div>
-  </section>
+  <!-- HOME -->
+  <div class="panel" data-panel="home">
+    <section class="card hero" aria-label="Month summary">
+      <div><span class="eyebrow" id="heroLabel">Earned this month</span>
+        <div class="big" id="sEarn">$0.00</div>
+        <div class="sub" id="sEarnSub">Loading your shifts…</div></div>
+      <div class="minis">
+        <div><span class="eyebrow">Paid hours</span><span class="mid" id="sHrs">0.00</span><span class="sub" id="sHrsSub">&nbsp;</span></div>
+        <div><span class="eyebrow">Shifts</span><span class="mid" id="sShifts">0</span><span class="sub" id="sShiftsSub">&nbsp;</span></div>
+        <div><span class="eyebrow">Days off</span><span class="mid" id="sOff">0</span><span class="sub" id="sOffSub">&nbsp;</span></div>
+      </div>
+    </section>
 
-  <div class="grid">
+    <div class="section-title"><h2 id="payTitle">Next pay</h2><span class="hint">Before tax</span></div>
+    <div class="nextpay" id="nextPay"></div>
+
+    <section class="card" aria-labelledby="statsTitle">
+      <div class="card-head">
+        <h2 id="statsTitle">By job</h2>
+        <div class="seg" role="group" aria-label="Chart range"><button id="scMonth" aria-pressed="true">This month</button><button id="scAll" aria-pressed="false">All time</button></div>
+      </div>
+      <div class="pies">
+        <div class="pie" id="pieHrs"></div>
+        <div class="pie" id="pieEarn"></div>
+      </div>
+      <div class="tablewrap"><table id="jobTable" aria-label="Totals by job"></table></div>
+    </section>
+  </div>
+
+  <!-- SHIFTS -->
+  <div class="panel" data-panel="shifts" hidden>
     <section class="card" aria-labelledby="formTitle">
       <div class="card-head"><h2 id="formTitle">Log a shift</h2><span class="pill" id="formMode" hidden>Editing</span></div>
       <form id="form" novalidate>
@@ -273,8 +337,8 @@ details[open] summary .chev{transform:rotate(90deg)}
           <div class="field"><label for="fOut">Out</label><input type="time" id="fOut" required></div>
         </div>
         <div class="facts" aria-live="polite">
-          <div><span class="eyebrow">Shift</span><b class="num" id="kSpan">—</b></div>
-          <div><span class="eyebrow">Unpaid break</span><b class="num" id="kBreak">—</b></div>
+          <div><span class="eyebrow">Length</span><b id="kSpan">—</b></div>
+          <div><span class="eyebrow">Unpaid break</span><b id="kBreak">—</b></div>
           <div><span class="eyebrow">Stat holiday</span><b id="kStat">No</b></div>
         </div>
         <div class="preview" aria-live="polite"><span class="amt" id="pAmt">$0.00</span><span class="detail" id="pDetail">Enter in and out times</span></div>
@@ -286,92 +350,95 @@ details[open] summary .chev{transform:rotate(90deg)}
         </div>
       </form>
     </section>
-
-    <section class="card" aria-labelledby="statsTitle">
-      <div class="card-head">
-        <h2 id="statsTitle">Split by job</h2>
-        <div class="seg" role="group" aria-label="Chart range"><button id="scMonth" aria-pressed="true">This month</button><button id="scAll" aria-pressed="false">All time</button></div>
-      </div>
-      <div class="pies">
-        <div class="pie" id="pieHrs"></div>
-        <div class="pie" id="pieEarn"></div>
-      </div>
-      <div class="tablewrap"><table id="jobTable" aria-label="Totals by job"></table></div>
+    <section class="card" aria-labelledby="listTitle">
+      <div class="card-head"><h2 id="listTitle">Shifts</h2><span class="hint" id="listHint"></span></div>
+      <div class="list" id="list"><div class="blank">Your shifts for this month will show here.</div></div>
     </section>
   </div>
 
-  <section class="card" id="merCard" aria-labelledby="merTitle">
-    <div class="card-head"><h2 id="merTitle"><span class="sw" style="background:var(--job-mer)"></span>Mercor</h2><span class="hint">Contract work, paid in US dollars · no tax taken off</span></div>
-    <div class="setupnote" id="merSetup" hidden>Mercor needs one more database table. Run the Mercor SQL from the setup guide (README.md) in Supabase → SQL Editor, then reload this page.</div>
-    <div class="mgrid" id="merBody">
-      <form id="mForm" novalidate>
-        <div class="row2">
-          <div class="field"><label for="mDate">Date</label><input type="date" id="mDate"></div>
-          <div class="field"><label for="mHours">Hours</label><input type="text" id="mHours" inputmode="decimal" placeholder="2.5 or 2:30" autocomplete="off"></div>
-        </div>
-        <div class="field"><label for="mProject">Project / task</label><input type="text" id="mProject" list="mProjects" placeholder="e.g. Coding eval" autocomplete="off"><datalist id="mProjects"></datalist></div>
-        <div class="row2">
-          <div class="field"><label for="mRate">Hourly rate (US$)</label><input type="number" id="mRate" step="0.01" min="0" inputmode="decimal"></div>
-          <div class="field"><label for="mFx">US$ → CA$ rate</label><input type="number" id="mFx" step="0.0001" min="0" inputmode="decimal"></div>
-        </div>
-        <span class="hint" id="mFxHint">&nbsp;</span>
-        <div class="row2">
-          <div class="field"><label for="mBonusType">Bonus</label><select id="mBonusType"><option value="none">No bonus</option><option value="flat">Flat amount (US$)</option><option value="hour">Extra per hour (US$/h)</option></select></div>
-          <div class="field"><label for="mBonusAmt">Bonus amount</label><input type="number" id="mBonusAmt" step="0.01" min="0" inputmode="decimal" disabled></div>
-        </div>
-        <div class="field" id="mNoteRow" hidden><label for="mBonusNote">Bonus note</label><input type="text" id="mBonusNote" placeholder="e.g. Weekend bonus" autocomplete="off"></div>
-        <div class="preview" aria-live="polite"><span class="amt" id="mAmt">US$0.00</span><span class="detail" id="mDetail">Enter hours and a rate</span></div>
-        <div class="err" id="mErr" hidden></div>
-        <div class="actions"><button type="button" class="btn" id="mCancel" hidden>Cancel</button><button type="submit" class="btn primary" id="mSave">Save Mercor work</button></div>
-      </form>
-      <div class="mstats">
+  <!-- MERCOR -->
+  <div class="panel" data-panel="mercor" hidden>
+    <section class="card" id="merCard" aria-labelledby="merTitle">
+      <div class="card-head"><h2 id="merTitle">Mercor</h2><span class="hint">Paid in US$ · no tax taken off</span></div>
+      <div class="setupnote" id="merSetup" hidden>Mercor needs one more database table. Run the Mercor SQL from the setup guide (README.md) in Supabase → SQL Editor, then reload this page.</div>
+      <div class="mgrid" id="merBody">
         <div class="mtiles">
           <div><span class="eyebrow">Earned (US$)</span><span class="v" id="mtUsd">US$0.00</span><span class="s" id="mtUsdSub">&nbsp;</span></div>
           <div><span class="eyebrow">In CA$</span><span class="v" id="mtCad">$0.00</span><span class="s" id="mtCadSub">&nbsp;</span></div>
           <div><span class="eyebrow">Hours</span><span class="v" id="mtHrs">0.00</span><span class="s" id="mtHrsSub">&nbsp;</span></div>
         </div>
-        <div class="tablewrap"><table id="mProjTable" aria-label="Mercor earnings by project"></table></div>
-        <div class="list merlist" id="mList"></div>
+        <form id="mForm" novalidate>
+          <div class="row2">
+            <div class="field"><label for="mDate">Date</label><input type="date" id="mDate"></div>
+            <div class="field"><label for="mHours">Hours</label><input type="text" id="mHours" inputmode="decimal" placeholder="2.5 or 2:30" autocomplete="off"></div>
+          </div>
+          <div class="field"><label for="mProject">Project</label><input type="text" id="mProject" list="mProjects" placeholder="e.g. Coding eval" autocomplete="off"><datalist id="mProjects"></datalist></div>
+          <div class="row2">
+            <div class="field"><label for="mRate">Rate (US$/h)</label><input type="number" id="mRate" step="0.01" min="0" inputmode="decimal"></div>
+            <div class="field"><label for="mFx">US$ → CA$</label><input type="number" id="mFx" step="0.0001" min="0" inputmode="decimal"></div>
+          </div>
+          <span class="hint" id="mFxHint">&nbsp;</span>
+          <div class="row2">
+            <div class="field"><label for="mBonusType">Bonus</label><select id="mBonusType"><option value="none">No bonus</option><option value="flat">Flat amount (US$)</option><option value="hour">Extra per hour (US$/h)</option></select></div>
+            <div class="field"><label for="mBonusAmt">Bonus amount</label><input type="number" id="mBonusAmt" step="0.01" min="0" inputmode="decimal" disabled></div>
+          </div>
+          <div class="field" id="mNoteRow" hidden><label for="mBonusNote">Bonus note</label><input type="text" id="mBonusNote" placeholder="e.g. Weekend bonus" autocomplete="off"></div>
+          <div class="preview" aria-live="polite"><span class="amt" id="mAmt">US$0.00</span><span class="detail" id="mDetail">Enter hours and a rate</span></div>
+          <div class="err" id="mErr" hidden></div>
+          <div class="actions"><button type="button" class="btn" id="mCancel" hidden>Cancel</button><button type="submit" class="btn primary" id="mSave">Save Mercor work</button></div>
+        </form>
+        <div class="mstats">
+          <div class="tablewrap"><table id="mProjTable" aria-label="Mercor earnings by project"></table></div>
+          <div class="list merlist" id="mList"></div>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </div>
 
-  <section class="card" aria-labelledby="payTitle">
-    <div class="card-head"><h2 id="payTitle">Paydays</h2><span class="hint">Gross pay, before tax and deductions</span></div>
-    <div class="nextpay" id="nextPay"></div>
-    <div class="tablewrap"><table id="payTable" aria-label="Paydays this month"></table></div>
-  </section>
+  <!-- PAYDAYS -->
+  <div class="panel" data-panel="paydays" hidden>
+    <section class="card" aria-labelledby="payTableTitle">
+      <div class="card-head"><h2 id="payTableTitle">Paydays</h2><span class="hint">Gross pay, before tax</span></div>
+      <div class="paylist" id="payTable" aria-label="Paydays this month"></div>
+    </section>
+  </div>
 
-  <section class="card" aria-labelledby="listTitle">
-    <div class="card-head"><h2 id="listTitle">Shifts</h2><span class="hint" id="listHint"></span></div>
-    <div class="list" id="list"><div class="blank">Your shifts for this month will show here. Log one with the form above.</div></div>
-  </section>
+  <!-- MORE -->
+  <div class="panel" data-panel="more" hidden>
+    <section class="card settings" aria-label="Settings">
+      <div class="setrow"><div class="t"><b>Account</b><span class="hint" id="whoEmail"></span></div><button class="btn" id="signOut" type="button">Sign out</button></div>
+      <div class="setrow"><div class="t"><b>Appearance</b><span class="hint">Auto follows your device</span></div>
+        <button class="btn themebtn" id="themeBtn" type="button" aria-label="Theme: follows your device. Click to change."><span aria-hidden="true" id="themeIcon">◐</span> <span id="themeLabel">Auto</span></button></div>
+      <div class="setrow"><div class="t"><b>Excel</b><span class="hint">Download, fill in missed shifts, upload</span></div>
+        <div class="btns"><button class="btn" id="dlBtn" type="button" hidden>Download</button><button class="btn" id="ulBtn" type="button">Upload</button></div>
+        <input type="file" id="ulFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div>
+      <div class="setrow"><div class="t"><b>Backup</b><span class="hint">Everything as one .json file</span></div>
+        <div class="btns"><button class="btn" type="button" id="bkDown">Download</button><button class="btn" type="button" id="bkUp">Import</button></div>
+        <input type="file" id="bkFile" accept=".json,application/json" hidden></div>
+    </section>
 
-  <section class="card">
-    <details id="ratesBox">
-      <summary><h2>Pay rates &amp; break rules</h2><span class="chev">›</span></summary>
+    <section class="card" id="ratesBox" aria-labelledby="ratesTitle">
+      <h2 id="ratesTitle">Pay rates</h2>
       <div class="rates" id="rates"></div>
       <form id="rateForm" class="addrate" novalidate>
         <div class="field"><label for="rJob">Job</label><select id="rJob"></select></div>
-        <div class="field"><label for="rRate">New rate ($/hr)</label><input type="number" id="rRate" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="field"><label for="rRate">New rate ($/h)</label><input type="number" id="rRate" step="0.01" min="0" inputmode="decimal"></div>
         <div class="field"><label for="rFrom">Starting</label><input type="date" id="rFrom"></div>
-        <button class="btn" type="submit">Add rate</button>
+        <button class="btn" type="submit">Add raise</button>
       </form>
+    </section>
+
+    <section class="card" aria-labelledby="rulesTitle">
+      <h2 id="rulesTitle">Break &amp; pay rules</h2>
       <ul class="rules">
         <li>University AV/IT: no break at 5 hours or less, 30 min over 5 hours, 60 min at 8 hours or more.</li>
         <li>Winners: no break at 5 hours or less, 30 min up to 6.5 hours, 45 min over 6.5 hours.</li>
         <li>Stampede: no break at 5 hours or less, 30 min over 5 hours.</li>
-        <li>Worked hours past 8 in a shift pay 1.5×.</li>
-        <li>Winners only: every hour on an Alberta general holiday pays 1.5× (New Year's Day, Family Day, Good Friday, Victoria Day, Canada Day, Labour Day, Thanksgiving, Remembrance Day, Christmas Day).</li>
+        <li>Hours worked past 8 in a shift pay 1.5×.</li>
+        <li>Winners only: every hour on an Alberta general holiday pays 1.5×.</li>
       </ul>
-      <div class="backup">
-        <span class="hint">Backup file (.json):</span>
-        <button class="btn" type="button" id="bkDown">Download backup</button>
-        <button class="btn" type="button" id="bkUp">Import backup</button>
-        <input type="file" id="bkFile" accept=".json,application/json" hidden>
-      </div>
-    </details>
-  </section>
+    </section>
+  </div>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -494,7 +561,7 @@ function pie(el,title,data,fmtV){
     const x0=C+R*Math.cos(a),y0=C+R*Math.sin(a),x1=C+R*Math.cos(a1),y1=C+R*Math.sin(a1);
     paths+=`<path d="M${C},${C} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${d.color}" stroke="var(--surface)" stroke-width="2" stroke-linejoin="round" data-tip="${lbl}"></path>`;
     a=a1});
-  el.innerHTML=`<svg viewBox="0 0 200 200" role="img" aria-label="${title} by job: ${live.map(d=>d.name+" "+fmtV(d.v)).join(", ")}">${paths}</svg>
+  el.innerHTML=`<svg viewBox="0 0 200 200" role="img" aria-label="${title} by job: ${live.map(d=>d.name+" "+fmtV(d.v)).join(", ")}">${paths}<circle cx="100" cy="100" r="62" fill="var(--surface)"></circle></svg>
     <span class="cap">${title} · <span class="num">${fmtV(total)}</span></span><div class="tip" hidden></div>`;
   const tip=el.querySelector(".tip");
   el.querySelectorAll("[data-tip]").forEach(p=>{
@@ -549,10 +616,12 @@ function renderPay(){
     <span class="per">Work ${fmtShort(p.start)}–${fmtShort(p.end)} · ${hrs(p.hrs)} h · ${p.n} ${p.job==="Mercor"?"entr"+(p.n===1?"y":"ies"):"shift"+(p.n===1?"":"s")}${p.est?" · estimate":""}</span></div>`}).join("");
   const k=S.month,list=PAY_JOBS.flatMap(j=>periods(j,k+"-01",k+"-"+pad(daysIn(k)))).filter(p=>p.n>0||p.pay>=todayStr).sort((a,b)=>a.pay<b.pay?-1:a.pay>b.pay?1:0);
   const tot=list.reduce((a,p)=>a+p.gross,0);
-  if(!list.length){$("payTable").innerHTML=`<tbody><tr><td class="hint" style="font-family:var(--f-body)">No paydays with logged shifts in ${MON[Number(k.slice(5))-1]}.</td></tr></tbody>`;return}
-  $("payTable").innerHTML=`<thead><tr><th>Payday</th><th>Job</th><th>Work period</th><th>Hours</th><th>Gross pay</th><th>Status</th></tr></thead><tbody>`+
-    list.map(p=>`<tr><td>${fmtD(p.pay)}</td><td><span class="sw" style="background:${JI(p.job).color}"></span>${JI(p.job).short}</td><td>${fmtShort(p.start)}–${fmtShort(p.end)}</td><td>${hrs(p.hrs)}</td><td>${money(p.gross)}${p.job==="Mercor"?`<br><span class="hint">${usd(p.usd)}</span>`:""}</td><td>${payStatus(p)}</td></tr>`).join("")+
-    `<tr class="total"><td>Paid in ${MON[Number(k.slice(5))-1]}</td><td></td><td></td><td></td><td>${money(tot)}</td><td></td></tr></tbody>`;
+  const M=MON[Number(k.slice(5))-1];
+  if(!list.length){$("payTable").innerHTML=`<div class="blank">No paydays with logged work in ${M}.</div>`;return}
+  $("payTable").innerHTML=list.map(p=>{const d=parseD(p.pay);return `<div class="payrow"><div class="pd"><b>${d.getDate()}</b><span>${DOW[d.getDay()]}</span></div>
+    <div class="pinfo"><div class="pjob"><span class="sw" style="background:${JI(p.job).color}"></span>${JI(p.job).short} ${payStatus(p)}</div><div class="hint">Work ${fmtShort(p.start)}–${fmtShort(p.end)} · ${hrs(p.hrs)} h</div></div>
+    <div class="pamt"><b>${money(p.gross)}</b>${p.job==="Mercor"?`<span class="hint">${usd(p.usd)}</span>`:""}</div></div>`}).join("")+
+    `<div class="paytotal"><span>Paid in ${M}</span><b>${money(tot)}</b></div>`;
 }
 
 /* ---------- mercor ---------- */
@@ -644,7 +713,7 @@ function render(){
   let earn=0,h=0,sched=0;inMonth.forEach(s=>{const c=calc(s);earn+=c.earn;h+=c.paid;if(s.date>todayStr)sched+=c.earn});
   tM.forEach(t=>{earn+=tcalc(t).cad;h+=t.hours});
   const days=new Set(inMonth.map(s=>s.date).concat(tM.map(t=>t.date))).size,dim=daysIn(k);
-  $("sEarn").textContent=money(earn);
+  $("sEarn").textContent=money(earn);$("heroLabel").textContent=`Earned in ${MON[Number(k.slice(5))-1]}${k.slice(0,4)!==todayStr.slice(0,4)?" "+k.slice(0,4):""}`;
   $("sEarnSub").textContent=!S.loaded?"Loading your shifts…":sched>0?`includes ${money(sched)} scheduled`:inMonth.length?"before tax":"no shifts logged";
   $("sHrs").textContent=hrs(h);$("sHrsSub").textContent=inMonth.length+tM.length?`avg ${hrs(h/(inMonth.length+tM.length))} per entry`:"\u00a0";
   $("sShifts").textContent=inMonth.length;$("sShiftsSub").textContent=`${tM.length?`+ ${tM.length} Mercor · `:""}on ${days} day${days===1?"":"s"}`;
@@ -666,7 +735,7 @@ function render(){
 function renderList(){
   const k=S.month,inMonth=S.shifts.filter(s=>mKey(s.date)===k).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.in<b.in?-1:1);
   $("listTitle").textContent=`Shifts in ${MON[Number(k.slice(5))-1]}`;
-  $("listHint").textContent=inMonth.length?"Tap Edit to change a shift":"";
+  $("listHint").textContent=inMonth.length?"Tap a shift to edit it":"";
   if(!inMonth.length){$("list").innerHTML=`<div class="blank">${S.loaded?"No shifts logged for "+mLabel(k)+". Use the form to add one.":"Loading your shifts…"}</div>`;return}
   const groups={};inMonth.forEach(s=>(groups[s.date]=groups[s.date]||[]).push(s));
   $("list").innerHTML=Object.keys(groups).map(d=>{const dt=parseD(d);
@@ -701,7 +770,7 @@ function buildWorkbook(X){
   months.forEach(k=>{
     const [y,m]=k.split("-").map(Number),list=S.shifts.filter(s=>mKey(s.date)===k).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.in<b.in?-1:1);
     const jobsIn=JOBS.filter(j=>list.some(s=>s.job===j.name));
-    const aoa=[[`Pay Tracker — ${MON[m-1]} ${y}`],[],["Hourly Rates"]];
+    const aoa=[[`Grind — ${MON[m-1]} ${y}`],[],["Hourly Rates"]];
     jobsIn.forEach(j=>aoa.push([j.name,rateFor(j.name,k+"-"+pad(daysIn(k)))]));
     aoa.push([]);const hdr=aoa.length;
     aoa.push(["Date","Day","Job","In","Out","Break (min)","Paid Hrs","Rate","Earnings","Notes"]);
@@ -743,14 +812,14 @@ function buildWorkbook(X){
   return wb}
 $("dlBtn").addEventListener("click",async()=>{const b=$("dlBtn");b.disabled=true;b.textContent="Preparing…";
   try{const X=await loadXLSX(),buf=X.write(buildWorkbook(X),{bookType:"xlsx",type:"array"});
-    saveFile(`pay_tracker_${todayStr}.xlsx`,new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));toast("Excel file downloaded")}
+    saveFile(`grind_${todayStr}.xlsx`,new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));toast("Excel file downloaded")}
   catch(x){toast("Couldn't create the Excel file. Try again.")}
-  finally{b.disabled=false;b.textContent="↓ Download Excel"}});
+  finally{b.disabled=false;b.textContent="Download"}});
 function saveFile(name,blob){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
 
 /* ---------- backup ---------- */
 $("bkDown").addEventListener("click",()=>{const data={app:"pay-tracker",exported:new Date().toISOString(),rates,shifts:S.shifts.map(({date,job,in:i,out:o})=>({date,job,in:i,out:o})),mercor:S.tasks.map(({date,project,hours,rate,bonus,note,fx})=>({date,project,hours,rate,bonus,note,fx}))};
-  saveFile(`pay_tracker_backup_${todayStr}.json`,new Blob([JSON.stringify(data,null,1)],{type:"application/json"}));toast("Backup downloaded")});
+  saveFile(`grind_backup_${todayStr}.json`,new Blob([JSON.stringify(data,null,1)],{type:"application/json"}));toast("Backup downloaded")});
 $("bkUp").addEventListener("click",()=>$("bkFile").click());
 $("bkFile").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
   try{const d=JSON.parse(await f.text());if(!Array.isArray(d.shifts))throw 0;
@@ -761,7 +830,7 @@ $("bkFile").addEventListener("change",async e=>{const f=e.target.files[0];e.targ
     if(rr.length){const {error}=await sb.from("rates").upsert(rr,{onConflict:"user_id,job,effective_from"});if(error)throw error}
     for(let i=0;i<rows.length;i+=200){const {error}=await sb.from("shifts").insert(rows.slice(i,i+200));if(error)throw error}
     await loadAll();toast(`Imported ${rows.length} shift${rows.length===1?"":"s"}`)}
-  catch(x){toast("That file couldn't be imported. Use a Pay Tracker backup (.json).")}});
+  catch(x){toast("That file couldn't be imported. Use a Grind or Pay Tracker backup (.json).")}});
 
 /* ---------- excel import ---------- */
 const MONIDX={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
@@ -877,9 +946,23 @@ function applyTheme(k){const r=document.documentElement;if(k==="auto")r.removeAt
 $("themeBtn").addEventListener("click",()=>{const i=THEMES.findIndex(x=>x.k===getTheme());const n=THEMES[(i+1)%THEMES.length];applyTheme(n.k);toast(n.k==="auto"?"Theme follows your device":`${n.label} mode`)});
 applyTheme(getTheme());
 
+/* tap a shift/entry row to reveal Edit and Delete (phones have no hover) */
+["list","mList"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target.closest("button"))return;const row=e.target.closest(".shift");if(!row)return;
+  const was=row.classList.contains("open");document.querySelectorAll(".shift.open").forEach(r=>r.classList.remove("open"));if(!was)row.classList.add("open")}));
+
+/* ---------- tabs ---------- */
+const TABS=["home","shifts","mercor","paydays","more"];
+function showTab(t,save=true){if(!TABS.includes(t))t="home";
+  document.querySelectorAll(".tabs [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===t)));
+  document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==t);
+  if(save){try{localStorage.setItem("pt-tab",t)}catch(e){}}
+  window.scrollTo(0,0)}
+document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)showTab(b.dataset.tab)});
+showTab((()=>{const h=location.hash.slice(1);if(TABS.includes(h))return h;try{return localStorage.getItem("pt-tab")||"home"}catch(e){return "home"}})(),false);
+
 /* ---------- boot ---------- */
 syncForm();render();refreshFx();
-if(!sb){$("authScreen").hidden=false;$("authForm").innerHTML='<div class="who"><span class="eyebrow">Setup needed</span><h1>Pay Tracker</h1></div><p>Add your Supabase project URL and anon key to <b>config.js</b>, then reload this page. The setup steps are in README.md.</p>'}
+if(!sb){$("authScreen").hidden=false;$("authForm").innerHTML='<div class="who"><span class="eyebrow">Setup needed</span><h1>Grind</h1></div><p>Add your Supabase project URL and anon key to <b>config.js</b>, then reload this page. The setup steps are in README.md.</p>'}
 else{
   sb.auth.onAuthStateChange((ev,session)=>{if(session&&session.user){if(!S.user||S.user.id!==session.user.id)showApp(session.user)}else showAuth()});
   sb.auth.getSession().then(({data})=>{if(data.session)showApp(data.session.user);else showAuth()});

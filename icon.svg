@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="116" fill="#3457d5"/>
+  <!-- G drawn as a clock: open ring + clock hands forming the G bar -->
+  <path d="M378 166 A148 148 0 1 0 404 256" fill="none" stroke="#fff" stroke-width="52" stroke-linecap="round"/>
+  <path d="M256 256 H404" stroke="#fff" stroke-width="52" stroke-linecap="round"/>
+  <path d="M256 256 V176" stroke="#fff" stroke-width="40" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="26" fill="#fff"/>
+</svg>

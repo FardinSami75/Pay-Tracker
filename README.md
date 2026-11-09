@@ -1,4 +1,8 @@
-# Pay Tracker
+<img src="icon.svg" alt="Grind logo" width="96">
+
+# Grind
+
+*(formerly Pay Tracker)*
 
 Sami's personal pay tracker for **University AV/IT**, **Winners**, **Stampede** and **Mercor**. It works out breaks, overtime, stat pay, paydays and earnings automatically, shows pie charts by job, and imports and exports Excel files.
 
@@ -48,6 +52,9 @@ Only the code is in this repository. No shift or pay data is stored here.
   - An existing shift for the same job and date gets updated. Deleting a row in Excel does **not** delete anything on the site.
 
 ### Look
+- **Name and logo:** the app is called **Grind**. The logo is a white **G** drawn as a clock (hours worked) on blue.
+- **Layout:** a clean, minimal design in tabs: **Home** (this month's earnings, next pay, charts by job), **Shifts** (log a shift and the month's list), **Mercor**, **Paydays**, and **More** (account, theme, Excel, backup, pay rates and rules). On phones the tabs sit at the bottom like an app. Tap a shift to edit or delete it.
+- **Add to Home Screen:** on iPhone use Share → Add to Home Screen, and on Android use ⋮ → Add to Home screen. It opens full screen like an app, with the Grind icon and name.
 - **Theme button** (◐ Auto / ☀ Light / ☾ Dark) at the top. Auto follows your phone's or computer's setting. Your choice is remembered on each device.
 
 ### Backups and account
@@ -119,6 +126,9 @@ All tables use row-level security, so each signed-in user only sees their own ro
 | `config.js` | Supabase project URL and publishable key (safe to be public) |
 | `setup.sql` | Database tables and security rules |
 | `README.md` | This file |
+| `icon.svg` | The logo (also the browser-tab icon) |
+| `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` | Home-screen icons for iPhone and Android |
+| `manifest.webmanifest` | Lets the site be added to a phone's home screen as "Grind" |
 
 ### Good to know
 - **Free Supabase projects pause after about a week with no use.** If the site can't load your data, sign in at supabase.com and click **Restore project**. The data is kept.
@@ -130,6 +140,8 @@ All tables use row-level security, so each signed-in user only sees their own ro
 
 | Date | Change |
 |---|---|
+| 2026-11-09 | **Redesign:** a clean, minimal look with one typeface (Figtree), soft cards and one blue accent. The single long page became five tabs (bottom bar on phones). Home shows only the essentials. Paydays is a simple list, and Edit/Delete appear when you tap a shift. Excel, backup, theme and sign out moved to More. |
+| 2026-11-09 | **Renamed to Grind and added a logo (clock-shaped G):** a favicon, home-screen icons for iPhone and Android, and an app manifest so the site opens full screen from the home screen. Excel and backup downloads are now named `grind_…`. The repository and site address stay the same. |
 | 2026-10-27 | **Theme button:** switch between Auto (follows the device), Light and Dark. Remembered per device. |
 | 2026-10-27 | **Mercor added:** logging by project with US$ rates, flat or per-hour bonuses, automatic US$→CA$ conversion (editable per entry), a US$ and CA$ summary, a by-project breakdown, weekly Wednesday paydays, Mercor in charts and totals, and a Mercor sheet in the Excel download and upload. New `mercor_tasks` table. This README became the project guide. |
 | 2026-10-24 | **Excel upload:** add or update many shifts at once from a filled-in Excel file, with a preview. The Excel download now includes every month up to next month. |

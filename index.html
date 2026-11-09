@@ -164,6 +164,8 @@ th:first-child,td:first-child{text-align:left;padding-left:0}
 th:last-child,td:last-child{padding-right:0}
 td{padding:11px 8px;border-bottom:1px solid var(--line);text-align:right}
 td:first-child{font-weight:500}
+td:first-child{white-space:nowrap}
+@media (max-width:440px){table{font-size:13px}th,td{padding-left:4px;padding-right:4px}}
 tr:last-child td{border-bottom:0}
 tr.total td{font-weight:700;border-top:1px solid var(--line-strong)}
 .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:middle}
@@ -319,7 +321,7 @@ tr.total td{font-weight:700;border-top:1px solid var(--line-strong)}
 
     <section class="card" aria-labelledby="statsTitle">
       <div class="card-head">
-        <h2 id="statsTitle">By job</h2>
+        <div class="brandtext"><h2 id="statsTitle">By job</h2><span class="hint" id="scopeNote"></span></div>
         <div class="seg" role="group" aria-label="Chart range"><button id="scMonth" aria-pressed="true">This month</button><button id="scAll" aria-pressed="false">All time</button></div>
       </div>
       <div class="pies">
@@ -732,9 +734,12 @@ function render(){
   pie($("pieHrs"),"Paid hours",by.map(b=>({name:b.short,color:b.color,v:b.h})),v=>hrs(v)+" h");
   pie($("pieEarn"),"Earnings",by.map(b=>({name:b.short,color:b.color,v:b.e})),money);
   const th=by.reduce((a,b)=>a+b.h,0),te=by.reduce((a,b)=>a+b.e,0);
-  $("jobTable").innerHTML=`<thead><tr><th>Job</th><th>Entries</th><th>Hours</th><th>Earnings (CA$)</th><th>Share</th></tr></thead><tbody>`+
-    by.filter(b=>b.n).map(b=>`<tr><td><span class="sw" style="background:${b.color}"></span>${b.name}</td><td>${b.n}</td><td>${hrs(b.h)}</td><td>${money(b.e)}</td><td>${te?(b.e/te*100).toFixed(0):0}%</td></tr>`).join("")+
-    `<tr class="total"><td>Total${S.scope==="all"?" (all time)":""}</td><td>${by.reduce((a,b)=>a+b.n,0)}</td><td>${hrs(th)}</td><td>${money(te)}</td><td></td></tr></tbody>`;
+  $("jobTable").innerHTML=`<thead><tr><th>Job</th><th>Entries</th><th>Hours</th><th>Earned</th><th>Share</th></tr></thead><tbody>`+
+    by.filter(b=>b.n).map(b=>`<tr><td><span class="sw" style="background:${b.color}"></span>${b.short}</td><td>${b.n}</td><td>${hrs(b.h)}</td><td>${money(b.e)}</td><td>${te?(b.e/te*100).toFixed(0):0}%</td></tr>`).join("")+
+    `<tr class="total"><td>Total</td><td>${by.reduce((a,b)=>a+b.n,0)}</td><td>${hrs(th)}</td><td>${money(te)}</td><td></td></tr></tbody>`;
+  const first=S.shifts.concat(S.tasks).reduce((a,s)=>!a||s.date<a?s.date:a,"");
+  $("scopeNote").textContent=S.scope==="all"?(first?`Since ${MON[Number(first.slice(5,7))-1]} ${Number(first.slice(8))}, ${first.slice(0,4)} (your first entry)`:"No entries yet"):`${MON[Number(k.slice(5))-1]} ${k.slice(0,4)}`;
+  $("scAll").textContent=first?`Since ${MON[Number(first.slice(5,7))-1].slice(0,3)} ${first.slice(0,4)}`:"All time";
   renderList();renderRates();renderPay();renderMercor();
 }
 function renderList(){

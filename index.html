@@ -118,6 +118,11 @@ form{display:flex;flex-direction:column;gap:14px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 input[type=date],input[type=time],input[type=number],input[type=text],input[type=email],input[type=password],select{width:100%;min-width:0;height:46px;padding:0 14px;border:1px solid transparent;border-radius:var(--r-sm);background:var(--surface-2);font-size:16px;transition:border-color .15s,background .15s}
 input:focus,select:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+/* iPhone Safari: native date/time boxes ignore width:100% and spill out of the card unless their native look is turned off */
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;display:block;max-width:100%;line-height:46px;text-align:left}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0}
+input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{opacity:.6}
+.row2>.field,.addrate>.field{min-width:0;overflow:hidden}
 input:disabled{opacity:.5}
 .jobs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .jobs button{border:1px solid transparent;background:var(--surface-2);border-radius:var(--r-sm);padding:11px 8px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}

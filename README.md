@@ -140,6 +140,7 @@ All tables use row-level security, so each signed-in user only sees their own ro
 
 | Date | Change |
 |---|---|
+| 2026-11-09 | **Fix:** on iPhone, the date and time boxes no longer spill outside their card or cover each other. |
 | 2026-11-09 | **Redesign:** a clean, minimal look with one typeface (Figtree), soft cards and one blue accent. The single long page became five tabs (bottom bar on phones). Home shows only the essentials. Paydays is a simple list, and Edit/Delete appear when you tap a shift. Excel, backup, theme and sign out moved to More. |
 | 2026-11-09 | **Renamed to Grind and added a logo (clock-shaped G):** a favicon, home-screen icons for iPhone and Android, and an app manifest so the site opens full screen from the home screen. Excel and backup downloads are now named `grind_…`. The repository and site address stay the same. |
 | 2026-10-27 | **Theme button:** switch between Auto (follows the device), Light and Dark. Remembered per device. |

@@ -439,7 +439,7 @@ tr.total td{font-weight:700;border-top:1px solid var(--line-strong)}
       <h2 id="rulesTitle">Break &amp; pay rules</h2>
       <ul class="rules">
         <li>University AV/IT: no break at 5 hours or less, 30 min over 5 hours, 60 min at 8 hours or more.</li>
-        <li>Winners: no break at 5 hours or less, 30 min up to 6.5 hours, 45 min over 6.5 hours.</li>
+        <li>Winners: no break under 5 hours, 30 min from 5 hours up to 6.5 hours, 45 min over 6.5 hours.</li>
         <li>Stampede: no break at 5 hours or less, 30 min over 5 hours.</li>
         <li>Hours worked past 8 in a shift pay 1.5×.</li>
         <li>Winners only: every hour on an Alberta general holiday pays 1.5×.</li>
@@ -465,9 +465,9 @@ function normT(t){if(!t)return"";const[h,m]=t.split(":").map(Number);return pad(
 function toMin(t){const[h,m]=t.split(":").map(Number);return h*60+m}
 function spanMin(i,o){let s=toMin(o)-toMin(i);if(s<=0)s+=1440;return s}
 function autoBreak(job,span){const h=span/60;
-  if(job==="University AV/IT")return h>=8?60:h>5?30:0;
-  if(h<=5)return 0;
-  if(job==="Winners")return h<=6.5?30:45;return 30}
+  if(job==="University AV/IT")return h>=8?60:h>5?30:0;   // exactly 5 h: no break
+  if(job==="Winners")return h<5?0:h<=6.5?30:45;            // exactly 5 h: 30 min
+  return h>5?30:0}                                          // Stampede
 const isStat=(job,date)=>job==="Winners"&&STATS.has(date);
 function paid(span,brk,stat){const w=Math.max(0,(span-brk)/60);
   if(stat)return{worked:w,paid:w*1.5,ot:0};

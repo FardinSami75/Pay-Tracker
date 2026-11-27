@@ -46,3 +46,8 @@ alter table public.mercor_tasks enable row level security;
 drop policy if exists "own mercor" on public.mercor_tasks;
 create policy "own mercor" on public.mercor_tasks for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Mercor per-task pay and Wednesday/Friday payment runs (added 2026-11-26). Safe to run more than once.
+alter table public.mercor_tasks add column if not exists pay_type  text not null default 'hour'; -- 'hour' or 'task'
+alter table public.mercor_tasks add column if not exists pay_run   text not null default 'wed';  -- base pay: 'wed' or 'fri'
+alter table public.mercor_tasks add column if not exists bonus_run text not null default 'wed';  -- bonus:    'wed' or 'fri'

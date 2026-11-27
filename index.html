@@ -146,6 +146,7 @@ input:disabled{opacity:.5}
 /* segmented control */
 .seg{display:inline-flex;background:var(--surface-2);border-radius:999px;padding:3px}
 .seg button{border:0;background:transparent;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.seg.wide{display:flex;height:46px;align-items:stretch}.seg.wide button{flex:1;padding:0 8px;font-size:14px}
 .seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 
 /* donuts */
@@ -376,12 +377,17 @@ tr.total td{font-weight:700;border-top:1px solid var(--line-strong)}
         </div>
         <form id="mForm" novalidate>
           <div class="row2">
+            <div class="field"><span class="lbl" id="mPayLbl">Pay type</span>
+              <div class="seg wide" role="group" aria-labelledby="mPayLbl"><button type="button" id="mPayHour" aria-pressed="true">Hourly</button><button type="button" id="mPayTask" aria-pressed="false">Per task</button></div></div>
+            <div class="field"><label for="mPayRun">Paid on</label><select id="mPayRun"><option value="wed">Wednesday</option><option value="fri">Friday</option></select></div>
+          </div>
+          <div class="row2">
             <div class="field"><label for="mDate">Date</label><input type="date" id="mDate"></div>
-            <div class="field"><label for="mHours">Hours</label><input type="text" id="mHours" inputmode="decimal" placeholder="2.5 or 2:30" autocomplete="off"></div>
+            <div class="field"><label for="mHours" id="mHoursLbl">Hours</label><input type="text" id="mHours" inputmode="decimal" placeholder="2.5 or 2:30" autocomplete="off"></div>
           </div>
           <div class="field"><label for="mProject">Project</label><input type="text" id="mProject" list="mProjects" placeholder="e.g. Coding eval" autocomplete="off"><datalist id="mProjects"></datalist></div>
           <div class="row2">
-            <div class="field"><label for="mRate">Rate (US$/h)</label><input type="number" id="mRate" step="0.01" min="0" inputmode="decimal"></div>
+            <div class="field"><label for="mRate" id="mRateLbl">Rate (US$/h)</label><input type="number" id="mRate" step="0.01" min="0" inputmode="decimal"></div>
             <div class="field"><label for="mFx">US$ → CA$</label><input type="number" id="mFx" step="0.0001" min="0" inputmode="decimal"></div>
           </div>
           <span class="hint" id="mFxHint">&nbsp;</span>
@@ -389,7 +395,10 @@ tr.total td{font-weight:700;border-top:1px solid var(--line-strong)}
             <div class="field"><label for="mBonusType">Bonus</label><select id="mBonusType"><option value="none">No bonus</option><option value="flat">Flat amount (US$)</option><option value="hour">Extra per hour (US$/h)</option></select></div>
             <div class="field"><label for="mBonusAmt">Bonus amount</label><input type="number" id="mBonusAmt" step="0.01" min="0" inputmode="decimal" disabled></div>
           </div>
-          <div class="field" id="mNoteRow" hidden><label for="mBonusNote">Bonus note</label><input type="text" id="mBonusNote" placeholder="e.g. Weekend bonus" autocomplete="off"></div>
+          <div class="row2" id="mNoteRow" hidden>
+            <div class="field"><label for="mBonusNote">Bonus note</label><input type="text" id="mBonusNote" placeholder="e.g. Weekend bonus" autocomplete="off"></div>
+            <div class="field"><label for="mBonusRun">Bonus paid</label><select id="mBonusRun"><option value="wed">Wednesday</option><option value="fri">Friday</option></select></div>
+          </div>
           <div class="preview" aria-live="polite"><span class="amt" id="mAmt">US$0.00</span><span class="detail" id="mDetail">Enter hours and a rate</span></div>
           <div class="err" id="mErr" hidden></div>
           <div class="actions"><button type="button" class="btn" id="mCancel" hidden>Cancel</button><button type="submit" class="btn primary" id="mSave">Save Mercor work</button></div>
@@ -600,9 +609,14 @@ function periods(job,from,to){ // pay periods whose payday falls in [from,to]
     // Mercor: weekly Friday-to-Friday cycles (cutoff Fri 10:30 AM PT), paid the following Wednesday.
     let i=Math.floor((dUTC(from)-dUTC(MER_ANCHOR))/864e5/7)-2;
     for(;;i++){const st=addDays(MER_ANCHOR,i*7),en=addDays(st,6),pay=addDays(en,6);if(pay>to)break;out.push({start:st,end:en,pay})}
-    return out.filter(p=>p.pay>=from&&p.pay<=to).map(p=>{let gross=0,u=0,hrsP=0,n=0;
-      S.tasks.forEach(t=>{if(t.date>=p.start&&t.date<=p.end){const x=tcalc(t);gross+=x.cad;u+=x.usd;hrsP+=t.hours;n++}});
-      return{...p,job,gross,usd:u,hrs:hrsP,n,est:p.end>=todayStr}});
+    // Each cycle has two payment runs: Wednesday (cycle end + 6 days) and Friday (2 days later). Base pay and bonus each go to the run chosen on the entry.
+    const rows=[];
+    out.forEach(p=>{const R={wed:{g:0,u:0,h:0,n:0,base:0},fri:{g:0,u:0,h:0,n:0,base:0}};
+      S.tasks.forEach(t=>{if(t.date>=p.start&&t.date<=p.end){const x=tcalc(t),a=R[t.payRun==="fri"?"fri":"wed"],b=R[t.bonusRun==="fri"?"fri":"wed"];
+        a.g+=x.base*t.fx;a.u+=x.base;a.h+=t.hours;a.n++;a.base++;if(x.bonus){b.g+=x.bonus*t.fx;b.u+=x.bonus;if(b!==a)b.n++}}});
+      rows.push({...p,job,gross:R.wed.g,usd:R.wed.u,hrs:R.wed.h,n:R.wed.n,bonus:R.wed.n>0&&R.wed.base===0,est:p.end>=todayStr});
+      if(R.fri.n)rows.push({start:p.start,end:p.end,pay:addDays(p.pay,2),job,gross:R.fri.g,usd:R.fri.u,hrs:R.fri.h,n:R.fri.n,bonus:R.fri.base===0,est:p.end>=todayStr})});
+    return rows.filter(p=>p.pay>=from&&p.pay<=to); // Wednesday rows always kept (shows the current cycle); Friday rows only when something is paid then
   }else if(job==="Winners"){
     let i=Math.floor((dUTC(from)-dUTC(WIN_ANCHOR))/864e5/14)-2;
     for(;;i++){const st=addDays(WIN_ANCHOR,i*14),en=addDays(st,13),pay=addDays(en,6);if(pay>to)break;out.push({start:st,end:en,pay})}
@@ -616,17 +630,17 @@ const fmtD=s=>{const d=parseD(s);return DOW[d.getDay()]+" "+MON[d.getMonth()].sl
 const fmtShort=s=>{const d=parseD(s);return MON[d.getMonth()].slice(0,3)+" "+d.getDate()};
 function payStatus(p){return p.pay<todayStr?'<span class="status">Paid</span>':p.pay===todayStr?'<span class="status today">Today</span>':`<span class="status up">${p.est?"Estimate":"Upcoming"}</span>`}
 function renderPay(){
-  const next=PAY_JOBS.filter(j=>j!=="Mercor"||S.tasks.length).map(j=>{const ps=periods(j,todayStr,addDays(todayStr,45));return j==="Mercor"?(ps.find(p=>p.n>0)||ps.find(p=>p.start<=todayStr&&p.end>=todayStr)):ps[0]}).filter(Boolean).sort((a,b)=>a.pay<b.pay?-1:1);
+  const next=PAY_JOBS.filter(j=>j!=="Mercor"||S.tasks.length).map(j=>{const ps=periods(j,todayStr,addDays(todayStr,45));return j==="Mercor"?(ps.filter(p=>p.n>0).sort((a,b)=>a.pay<b.pay?-1:1)[0]||ps.find(p=>p.start<=todayStr&&p.end>=todayStr)):ps[0]}).filter(Boolean).sort((a,b)=>a.pay<b.pay?-1:1);
   $("nextPay").innerHTML=next.map((p,i)=>{const j=JI(p.job);const days=Math.round((dUTC(p.pay)-dUTC(todayStr))/864e5);
-    return `<div class="np${i===0?" first":""}"><span class="eyebrow"><span class="sw" style="background:${j.color}"></span>${i===0?"Next pay · ":""}${j.short}</span>
+    return `<div class="np${i===0?" first":""}"><span class="eyebrow"><span class="sw" style="background:${j.color}"></span>${i===0?"Next pay · ":""}${j.short}${p.bonus?" bonus":""}</span>
     <span class="amt">${money(p.gross)}</span>${p.job==="Mercor"?`<span class="per">${usd(p.usd)} · CA$ is an estimate</span>`:""}<span class="when">${fmtD(p.pay)} · ${days===0?"today":days===1?"tomorrow":"in "+days+" days"}</span>
-    <span class="per">Work ${fmtShort(p.start)}–${fmtShort(p.end)} · ${hrs(p.hrs)} h · ${p.n} ${p.job==="Mercor"?"entr"+(p.n===1?"y":"ies"):"shift"+(p.n===1?"":"s")}${p.est?" · estimate":""}</span></div>`}).join("");
-  const k=S.month,list=PAY_JOBS.flatMap(j=>periods(j,k+"-01",k+"-"+pad(daysIn(k)))).filter(p=>p.n>0||p.pay>=todayStr).sort((a,b)=>a.pay<b.pay?-1:a.pay>b.pay?1:0);
+    <span class="per">Work ${fmtShort(p.start)}–${fmtShort(p.end)} · ${p.bonus?`bonus only`:p.hrs||p.job!=="Mercor"?`${hrs(p.hrs)} h`:`per task`} · ${p.n} ${p.job==="Mercor"?"entr"+(p.n===1?"y":"ies"):"shift"+(p.n===1?"":"s")}${p.est?" · estimate":""}</span></div>`}).join("");
+  const k=S.month,list=PAY_JOBS.flatMap(j=>periods(j,k+"-01",k+"-"+pad(daysIn(k)))).filter(p=>p.n>0||(p.pay>=todayStr&&p.job!=="Mercor")).sort((a,b)=>a.pay<b.pay?-1:a.pay>b.pay?1:0);
   const tot=list.reduce((a,p)=>a+p.gross,0);
   const M=MON[Number(k.slice(5))-1];
   if(!list.length){$("payTable").innerHTML=`<div class="blank">No paydays with logged work in ${M}.</div>`;return}
   $("payTable").innerHTML=list.map(p=>{const d=parseD(p.pay);return `<div class="payrow"><div class="pd"><b>${d.getDate()}</b><span>${DOW[d.getDay()]}</span></div>
-    <div class="pinfo"><div class="pjob"><span class="sw" style="background:${JI(p.job).color}"></span>${JI(p.job).short} ${payStatus(p)}</div><div class="hint">Work ${fmtShort(p.start)}–${fmtShort(p.end)} · ${hrs(p.hrs)} h</div></div>
+    <div class="pinfo"><div class="pjob"><span class="sw" style="background:${JI(p.job).color}"></span>${JI(p.job).short}${p.bonus?" bonus":""} ${payStatus(p)}</div><div class="hint">Work ${fmtShort(p.start)}–${fmtShort(p.end)} · ${p.bonus?"bonus only":p.hrs||p.job!=="Mercor"?hrs(p.hrs)+" h":p.n+" entr"+(p.n===1?"y":"ies")}</div></div>
     <div class="pamt"><b>${money(p.gross)}</b>${p.job==="Mercor"?`<span class="hint">${usd(p.usd)}</span>`:""}</div></div>`}).join("")+
     `<div class="paytotal"><span>Paid in ${M}</span><b>${money(tot)}</b></div>`;
 }
@@ -636,7 +650,9 @@ const MER={name:"Mercor",short:"Mercor",color:"var(--job-mer)"};
 const JI=n=>JOB[n]||(n==="Mercor"?MER:{name:n,short:n,color:"var(--ink-3)"});
 const usd=v=>"US$"+v.toLocaleString("en-CA",{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-function tcalc(t){const base=t.hours*t.rate,bonus=Number(t.bonus)||0,u=base+bonus;return{base,bonus,usd:u,cad:u*t.fx}}
+// payType "task" = rate is a fixed pay for the task; hours are optional (time spent).
+// payRun / bonusRun: which payment run pays the base pay / the bonus for that week's cycle — "wed" (the Wednesday after the cycle) or "fri" (that same week's Friday, 2 days later).
+function tcalc(t){const base=t.payType==="task"?Number(t.rate)||0:(Number(t.hours)||0)*t.rate,bonus=Number(t.bonus)||0,u=base+bonus;return{base,bonus,usd:u,cad:u*t.fx}}
 function parseHours(v){if(typeof v==="number")return v>0&&v<1?Math.round(v*1440)/60:v;const s=String(v||"").trim().toLowerCase();if(!s)return NaN;
   let m=s.match(/^(\d{1,2}):(\d{2})$/);if(m)return +m[1]+ +m[2]/60;
   m=s.match(/^(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+)\s*m(?:in)?)?$/);if(m&&(m[1]||m[2]))return (+m[1]||0)+(+m[2]||0)/60;
@@ -649,14 +665,18 @@ async function getFx(date){const d=date>todayStr?todayStr:date;if(fxCache[d])ret
   if(!v){try{const j=await fetchJSON(`https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json?start_date=${addDays(d,-7)}&end_date=${d}`);const o=j.observations||[];v=o.length?Number(o[o.length-1].FXUSDCAD.v):null}catch(e){}}
   if(v){v=Math.round(v*10000)/10000;fxCache[d]=v}return v}
 function lastFx(){const t=S.tasks.slice().sort((a,b)=>a.date<b.date?1:-1)[0];return t?t.fx:null}
-function knownProjects(){const m={};S.tasks.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(t=>m[t.project]=t.rate);return m}
-function mForm(){const type=$("mBonusType").value,amt=Number($("mBonusAmt").value)||0,hours=parseHours($("mHours").value);
-  return{date:$("mDate").value,project:$("mProject").value.trim(),hours,rate:Number($("mRate").value)||0,fx:Number($("mFx").value)||0,
-    type,amt,bonus:type==="flat"?amt:type==="hour"&&hours>0?amt*hours:0,note:type==="none"?"":($("mBonusNote").value.trim()||"Bonus")}}
+function knownProjects(){const m={};S.tasks.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(t=>m[t.project]={rate:t.rate,payType:t.payType,payRun:t.payRun,bonusRun:t.bonusRun});return m}
+function setPayType(pt){S.mPay=pt;$("mPayHour").setAttribute("aria-pressed",String(pt==="hour"));$("mPayTask").setAttribute("aria-pressed",String(pt==="task"));
+  $("mRateLbl").textContent=pt==="task"?"Task pay (US$)":"Rate (US$/h)";$("mHoursLbl").textContent=pt==="task"?"Time spent (optional)":"Hours";
+  $("mHours").placeholder=pt==="task"?"optional":"2.5 or 2:30";syncMer()}
+function mForm(){const type=$("mBonusType").value,amt=Number($("mBonusAmt").value)||0,hRaw=$("mHours").value.trim(),hours=hRaw?parseHours(hRaw):0,payType=S.mPay||"hour";
+  return{date:$("mDate").value,project:$("mProject").value.trim(),hours,hRaw,payType,rate:Number($("mRate").value)||0,fx:Number($("mFx").value)||0,
+    type,amt,bonus:type==="flat"?amt:type==="hour"&&hours>0?amt*hours:0,note:type==="none"?"":($("mBonusNote").value.trim()||"Bonus"),payRun:$("mPayRun").value,bonusRun:type==="none"?$("mPayRun").value:$("mBonusRun").value}}
 function syncMer(){const f=mForm();$("mBonusAmt").disabled=f.type==="none";$("mNoteRow").hidden=f.type==="none";
-  if(!(f.hours>0)||!(f.rate>0)){$("mAmt").textContent=usd(0);$("mDetail").textContent="Enter hours and a rate";return}
+  const task=f.payType==="task";
+  if(!(f.rate>0)||(!task&&!(f.hours>0))){$("mAmt").textContent=usd(0);$("mDetail").textContent=task?"Enter the task pay":"Enter hours and a rate";return}
   const c=tcalc({...f});$("mAmt").textContent=usd(c.usd);
-  $("mDetail").textContent=`${hrs(f.hours)} h × ${usd(f.rate)}${c.bonus?` + ${usd(c.bonus)} bonus`:""}${f.fx?` ≈ ${money(c.cad)}`:""}`}
+  $("mDetail").textContent=`${task?`Task ${usd(f.rate)}${f.hours>0?` · ${hrs(f.hours)} h`:""}`:`${hrs(f.hours)} h × ${usd(f.rate)}`}${c.bonus?` + ${usd(c.bonus)} bonus`:""}${f.fx?` ≈ ${money(c.cad)}`:""} · paid ${f.payRun==="fri"?"Fri":"Wed"}${c.bonus&&f.bonusRun!==f.payRun?`, bonus ${f.bonusRun==="fri"?"Fri":"Wed"}`:""}`}
 async function refreshFx(){if(S.mFxManual)return;const d=$("mDate").value||todayStr;$("mFxHint").textContent="Looking up the exchange rate…";
   const v=await getFx(d);if(S.mFxManual)return;
   if(v){$("mFx").value=v;$("mFxHint").textContent=`Bank rate for ${fmtShort(d>todayStr?todayStr:d)}. Change it if Mercor's payout used a different rate.`}
@@ -666,25 +686,31 @@ $("mDate").value=todayStr;
 $("mDate").addEventListener("change",()=>{refreshFx();syncMer()});
 $("mFx").addEventListener("input",()=>{S.mFxManual=true;$("mFxHint").textContent="Using the rate you typed.";syncMer()});
 $("mRate").addEventListener("input",()=>{S.mRateManual=true;syncMer()});
-$("mProject").addEventListener("input",()=>{const r=knownProjects()[$("mProject").value.trim()];if(r&&!S.mRateManual){$("mRate").value=r}syncMer()});
+$("mProject").addEventListener("input",()=>{const r=knownProjects()[$("mProject").value.trim()];if(r&&!S.mRateManual){$("mRate").value=r.rate;setPayType(r.payType||"hour");$("mPayRun").value=r.payRun||"wed";$("mBonusRun").value=r.bonusRun||"wed"}syncMer()});
+$("mPayHour").addEventListener("click",()=>setPayType("hour"));$("mPayTask").addEventListener("click",()=>setPayType("task"));
+$("mBonusRun").addEventListener("change",syncMer);$("mPayRun").addEventListener("change",()=>{if($("mBonusType").value==="none")$("mBonusRun").value=$("mPayRun").value;syncMer()});
 ["mHours","mBonusAmt","mBonusNote"].forEach(id=>$(id).addEventListener("input",syncMer));
 $("mBonusType").addEventListener("change",syncMer);
 function resetMer(){S.mEdit=null;S.mFxManual=false;S.mRateManual=false;["mHours","mBonusAmt","mBonusNote"].forEach(id=>$(id).value="");$("mBonusType").value="none";
   $("mSave").textContent="Save Mercor work";$("mCancel").hidden=true;$("mErr").hidden=true;refreshFx();syncMer();renderMercor()}
 $("mCancel").addEventListener("click",resetMer);
 function editTask(id){const t=S.tasks.find(x=>x.id===id);if(!t)return;S.mEdit=id;S.mFxManual=true;S.mRateManual=true;
-  $("mDate").value=t.date;$("mProject").value=t.project;$("mHours").value=String(r2(t.hours));$("mRate").value=t.rate;$("mFx").value=t.fx;
+  $("mDate").value=t.date;$("mProject").value=t.project;$("mHours").value=t.hours?String(r2(t.hours)):"";setPayType(t.payType||"hour");$("mPayRun").value=t.payRun||"wed";$("mBonusRun").value=t.bonusRun||"wed";$("mRate").value=t.rate;$("mFx").value=t.fx;
   $("mBonusType").value=t.bonus?"flat":"none";$("mBonusAmt").value=t.bonus?r2(t.bonus):"";$("mBonusNote").value=t.note||"";
   $("mFxHint").textContent="Rate saved with this entry.";$("mSave").textContent="Update Mercor work";$("mCancel").hidden=false;syncMer();renderMercor();
   $("mForm").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"})}
 $("mForm").addEventListener("submit",async e=>{e.preventDefault();const f=mForm();const err=m=>{$("mErr").textContent=m;$("mErr").hidden=false};
   if(!f.date)return err("Pick a date.");if(!f.project)return err("Enter the project or task name.");
-  if(!(f.hours>0&&f.hours<=24))return err("Enter the hours worked, like 2.5 or 2:30.");if(!(f.rate>0))return err("Enter the hourly rate in US$.");
+  if(f.payType==="hour"&&!(f.hours>0&&f.hours<=24))return err("Enter the hours worked, like 2.5 or 2:30.");
+  if(f.payType==="task"&&f.hRaw&&!(f.hours>0&&f.hours<=24))return err("Time spent should look like 2.5 or 2:30, or leave it blank.");
+  if(!(f.rate>0))return err(f.payType==="task"?"Enter what the task pays in US$.":"Enter the hourly rate in US$.");
+  if((f.payType==="task"||f.bonusRun==="fri"||f.payRun==="fri")&&S.merV2===false)return err("Per-task pay and Friday bonuses need a quick database update first. See Mercor setup in README.md.");
   if(!(f.fx>0))return err("Enter the US$ to CA$ exchange rate, like 1.39.");if(f.type!=="none"&&!(f.amt>0))return err("Enter the bonus amount, or choose No bonus.");
   $("mErr").hidden=true;$("mSave").disabled=true;
-  const row={date:f.date,project:f.project,hours:r2(f.hours),rate_usd:f.rate,bonus_usd:r2(f.bonus),bonus_note:f.note||null,fx:f.fx,updated_at:new Date().toISOString()};
+  const row={date:f.date,project:f.project,hours:r2(f.hours||0),rate_usd:f.rate,bonus_usd:r2(f.bonus),bonus_note:f.note||null,fx:f.fx,updated_at:new Date().toISOString()};
+  if(S.merV2!==false){row.pay_type=f.payType;row.pay_run=f.payRun;row.bonus_run=f.bonusRun}
   try{const id=S.mEdit;const {error}=id?await sb.from("mercor_tasks").update(row).eq("id",id):await sb.from("mercor_tasks").insert({...row,user_id:S.user.id});if(error)throw error;
-    toast(id?"Mercor work updated":`Saved ${usd(tcalc({hours:row.hours,rate:row.rate_usd,bonus:row.bonus_usd,fx:row.fx}).usd)} of Mercor work`);S.month=mKey(f.date);resetMer();await loadAll()}
+    toast(id?"Mercor work updated":`Saved ${usd(tcalc({hours:row.hours,rate:row.rate_usd,bonus:row.bonus_usd,fx:row.fx,payType:f.payType}).usd)} of Mercor work`);S.month=mKey(f.date);resetMer();await loadAll()}
   catch(x){err("Couldn't save. Check your connection and try again.")}finally{$("mSave").disabled=false}});
 function renderMercor(){
   $("merSetup").hidden=S.merReady!==false;$("merBody").hidden=S.merReady===false;
@@ -694,7 +720,8 @@ function renderMercor(){
   let au=0;S.tasks.forEach(t=>au+=tcalc(t).usd);
   $("mtUsd").textContent=usd(u);$("mtUsdSub").textContent=bo?`incl. ${usd(bo)} bonus`:`all time ${usd(au)}`;
   $("mtCad").textContent=money(c);$("mtCadSub").textContent=u?`avg rate ${(c/u).toFixed(4)}`:"\u00a0";
-  $("mtHrs").textContent=hrs(hh);$("mtHrsSub").textContent=hh?`${usd(u/hh)} per hour avg`:"\u00a0";
+  const hourly=inM.filter(t=>t.payType!=="task"),hu=hourly.reduce((a,t)=>a+tcalc(t).usd,0),hh2=hourly.reduce((a,t)=>a+t.hours,0),nt=inM.length-hourly.length;
+  $("mtHrs").textContent=hrs(hh);$("mtHrsSub").textContent=nt?`${nt} per-task entr${nt===1?"y":"ies"}`:hh2?`${usd(hu/hh2)} per hour avg`:"\u00a0";
   const pj={};inM.forEach(t=>{const x=tcalc(t);const o=pj[t.project]=pj[t.project]||{h:0,u:0,c:0,n:0};o.h+=t.hours;o.u+=x.usd;o.c+=x.cad;o.n++});
   const keys=Object.keys(pj).sort((a,b)=>pj[b].u-pj[a].u);
   $("mProjTable").innerHTML=keys.length?`<thead><tr><th>Project</th><th>Entries</th><th>Hours</th><th>US$</th><th>CA$</th></tr></thead><tbody>${keys.map(p=>`<tr><td>${esc(p)}</td><td>${pj[p].n}</td><td>${hrs(pj[p].h)}</td><td>${usd(pj[p].u)}</td><td>${money(pj[p].c)}</td></tr>`).join("")}</tbody>`:"";
@@ -702,8 +729,8 @@ function renderMercor(){
   $("mList").innerHTML=inM.map(t=>{const x=tcalc(t),dt=parseD(t.date);
     const ops=S.mDel===t.id?`<span class="hint">Delete this entry?</span><button class="linkbtn danger" data-mdel="${t.id}">Delete</button><button class="linkbtn" data-mnodel>Keep</button>`
       :`<button class="linkbtn" data-medit="${t.id}">Edit</button><button class="linkbtn" data-mask="${t.id}">Delete</button>`;
-    return `<div class="shift${S.mEdit===t.id?" editing":""}"><div class="job"><span class="dot" style="background:var(--job-mer)"></span>${DOW[dt.getDay()]} ${dt.getDate()} · ${esc(t.project)}${t.bonus?`<span class="tag ot">${esc(t.note||"Bonus")} +${usd(t.bonus)}</span>`:""}</div>
-    <div class="times">${hrs(t.hours)} h × ${usd(t.rate)}</div><div class="money"><b>${usd(x.usd)}</b><span>${money(x.cad)}</span></div><div class="ops">${ops}</div></div>`}).join("")}
+    return `<div class="shift${S.mEdit===t.id?" editing":""}"><div class="job"><span class="dot" style="background:var(--job-mer)"></span>${DOW[dt.getDay()]} ${dt.getDate()} · ${esc(t.project)}${t.bonus?`<span class="tag ot">${esc(t.note||"Bonus")} +${usd(t.bonus)}${t.bonusRun!==t.payRun?(t.bonusRun==="fri"?" · Fri":" · Wed"):""}</span>`:""}</div>
+    <div class="times">${t.payRun==="fri"?"Paid Fri · ":""}${t.payType==="task"?`Per task ${usd(t.rate)}${t.hours?` · ${hrs(t.hours)} h`:""}`:`${hrs(t.hours)} h × ${usd(t.rate)}`}</div><div class="money"><b>${usd(x.usd)}</b><span>${money(x.cad)}</span></div><div class="ops">${ops}</div></div>`}).join("")}
 $("mList").addEventListener("click",async e=>{const t=e.target;
   if(t.dataset.medit)editTask(t.dataset.medit);
   else if(t.dataset.mask){S.mDel=t.dataset.mask;renderMercor()}
@@ -811,13 +838,13 @@ function buildWorkbook(X){
     .map(p=>({"Payday":p.pay,"Job":p.job,"Period start":p.start,"Period end":p.end,"Paid hours":r2(p.hrs),"Gross pay":r2(p.gross),"Status":p.pay<todayStr?"Paid":p.est?"Estimate":"Upcoming"}));
   const pw=X.utils.json_to_sheet(pays);pw["!cols"]=[{wch:12},{wch:18},{wch:12},{wch:12},{wch:11},{wch:11},{wch:10}];
   X.utils.book_append_sheet(wb,pw,"Paydays");wb.SheetNames.splice(1,0,wb.SheetNames.pop());
-  const maoa=[["Mercor — contract work (US$)"],["Add new rows at the bottom: Date (YYYY-MM-DD), Project, Hours, Rate (USD). Bonus, note and exchange rate are optional."],[],
-    ["Date","Project","Hours","Rate (USD)","Bonus (USD)","Bonus note","Total (USD)","USD→CAD","Total (CAD)"]];
+  const maoa=[["Mercor — contract work (US$)"],["Add new rows at the bottom: Date (YYYY-MM-DD), Project, Hours, Rate (USD). Pay type Per task means Rate is the task's pay. Bonus, note, exchange rate, Paid on and Bonus paid (Wed/Fri) are optional."],[],
+    ["Date","Project","Hours","Rate (USD)","Bonus (USD)","Bonus note","Total (USD)","USD→CAD","Total (CAD)","Pay type","Paid on","Bonus paid"]];
   const mf=maoa.length+1;
-  S.tasks.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(t=>{const x=tcalc(t);maoa.push([t.date,t.project,r2(t.hours),t.rate,r2(t.bonus),t.note||"",r2(x.usd),t.fx,r2(x.cad)])});
+  S.tasks.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(t=>{const x=tcalc(t);maoa.push([t.date,t.project,r2(t.hours),t.rate,r2(t.bonus),t.note||"",r2(x.usd),t.fx,r2(x.cad),t.payType==="task"?"Per task":"Hourly",t.payRun==="fri"?"Fri":"Wed",t.bonus?(t.bonusRun==="fri"?"Fri":"Wed"):""])});
   const ml=maoa.length;const mws=X.utils.aoa_to_sheet(maoa);
-  for(let r=mf;r<=ml;r++){mws["G"+r].f=`ROUND(C${r}*D${r}+E${r},2)`;mws["I"+r].f=`ROUND(G${r}*H${r},2)`;["D","E","G"].forEach(c=>mws[c+r].z='"US$"#,##0.00');mws["I"+r].z='"$"#,##0.00';mws["H"+r].z="0.0000"}
-  mws["!cols"]=[{wch:12},{wch:28},{wch:7},{wch:11},{wch:11},{wch:18},{wch:12},{wch:9},{wch:12}];
+  for(let r=mf;r<=ml;r++){mws["G"+r].f=`ROUND(IF(J${r}="Per task",D${r},C${r}*D${r})+E${r},2)`;mws["I"+r].f=`ROUND(G${r}*H${r},2)`;["D","E","G"].forEach(c=>mws[c+r].z='"US$"#,##0.00');mws["I"+r].z='"$"#,##0.00';mws["H"+r].z="0.0000"}
+  mws["!cols"]=[{wch:12},{wch:28},{wch:7},{wch:11},{wch:11},{wch:18},{wch:12},{wch:9},{wch:12},{wch:10},{wch:9},{wch:10}];
   X.utils.book_append_sheet(wb,mws,"Mercor");wb.SheetNames.splice(2,0,wb.SheetNames.pop());
   return wb}
 $("dlBtn").addEventListener("click",async()=>{const b=$("dlBtn");b.disabled=true;b.textContent="Preparing…";
@@ -828,7 +855,7 @@ $("dlBtn").addEventListener("click",async()=>{const b=$("dlBtn");b.disabled=true
 function saveFile(name,blob){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
 
 /* ---------- backup ---------- */
-$("bkDown").addEventListener("click",()=>{const data={app:"pay-tracker",exported:new Date().toISOString(),rates,shifts:S.shifts.map(({date,job,in:i,out:o})=>({date,job,in:i,out:o})),mercor:S.tasks.map(({date,project,hours,rate,bonus,note,fx})=>({date,project,hours,rate,bonus,note,fx}))};
+$("bkDown").addEventListener("click",()=>{const data={app:"pay-tracker",exported:new Date().toISOString(),rates,shifts:S.shifts.map(({date,job,in:i,out:o})=>({date,job,in:i,out:o})),mercor:S.tasks.map(({date,project,hours,rate,bonus,note,fx,payType,payRun,bonusRun})=>({date,project,hours,rate,bonus,note,fx,payType,payRun,bonusRun}))};
   saveFile(`grind_backup_${todayStr}.json`,new Blob([JSON.stringify(data,null,1)],{type:"application/json"}));toast("Backup downloaded")});
 $("bkUp").addEventListener("click",()=>$("bkFile").click());
 $("bkFile").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
@@ -877,13 +904,13 @@ function parseWorkbook(X,wb){
   const madd=[];
   wb.SheetNames.filter(n=>/mercor/i.test(n)).forEach(name=>{const rows=X.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:""});
     const hi=rows.findIndex(r=>String(r[0]).trim().toLowerCase()==="date");if(hi<0)return;const H=rows[hi].map(c=>String(c).trim().toLowerCase());
-    const col=re=>H.findIndex(c=>re.test(c));const cP=col(/^project/),cH=col(/^hours/),cR=col(/^rate/),cB=col(/^bonus \(|^bonus$/),cN=col(/note/),cF=col(/usd.?→.?cad|^fx|exchange/);
+    const col=re=>H.findIndex(c=>re.test(c));const cP=col(/^project/),cH=col(/^hours/),cR=col(/^rate/),cB=col(/^bonus \(|^bonus$/),cN=col(/note/),cF=col(/usd.?→.?cad|^fx|exchange/),cT=col(/^pay type/),cW=col(/^bonus paid/),cPd=col(/^paid on/);
     const have=new Set(S.tasks.map(t=>[t.date,t.project,r2(t.hours),r2(t.rate),r2(t.bonus)].join("|")));
     for(let r=hi+1;r<rows.length;r++){const row=rows[r];if(!row.some(c=>String(c).trim()))continue;
-      const date=dateFrom(row[0],Number(todayStr.slice(0,4)),X),project=String(row[cP]||"").trim(),hours=parseHours(row[cH]),rate=Number(row[cR]),bonus=cB>=0?Number(row[cB])||0:0;
-      if(!date||!project||!(hours>0)||!(rate>0)){skipped.push(`${name}, row ${r+1}: ${!date?"no date":!project?"no project":!(hours>0)?"hours not readable":"rate missing"}`);continue}
+      const date=dateFrom(row[0],Number(todayStr.slice(0,4)),X),project=String(row[cP]||"").trim(),payType=cT>=0&&/task/i.test(String(row[cT]))?"task":"hour",hRaw=String(row[cH]??"").trim(),hours=hRaw?parseHours(row[cH]):0,rate=Number(row[cR]),bonus=cB>=0?Number(row[cB])||0:0,payRun=cPd>=0&&/^f/i.test(String(row[cPd]).trim())?"fri":"wed",bonusRun=cW>=0&&String(row[cW]).trim()?(/^f/i.test(String(row[cW]).trim())?"fri":"wed"):payRun;
+      if(!date||!project||(payType==="hour"&&!(hours>0))||!(rate>0)){skipped.push(`${name}, row ${r+1}: ${!date?"no date":!project?"no project":!(hours>0)?"hours not readable":"rate missing"}`);continue}
       const key=[date,project,r2(hours),r2(rate),r2(bonus)].join("|");if(have.has(key))continue;have.add(key);
-      madd.push({date,project,hours:r2(hours),rate,bonus:r2(bonus),note:cN>=0?String(row[cN]||"").trim():"",fx:cF>=0?Number(row[cF])||0:0})}});
+      madd.push({date,project,payType,payRun,bonusRun,hours:r2(hours||0),rate,bonus:r2(bonus),note:cN>=0?String(row[cN]||"").trim():"",fx:cF>=0?Number(row[cF])||0:0})}});
   const seen={},uniq=[];found.forEach(s=>{seen[s.date+"|"+s.job]=s});Object.values(seen).forEach(s=>uniq.push(s));
   const add=[],change=[];let same=0;
   uniq.forEach(s=>{const e=S.shifts.find(x=>x.date===s.date&&x.job===s.job);if(!e)add.push(s);else if(e.in!==s.in||e.out!==s.out)change.push({...s,id:e.id,old:e});else same++});
@@ -897,7 +924,7 @@ $("ulFile").addEventListener("change",async e=>{const f=e.target.files[0];e.targ
     $("importSummary").innerHTML=`<ul><li><b>${res.add.length}</b> new shift${res.add.length===1?"":"s"} to add</li><li><b>${res.change.length}</b> shift${res.change.length===1?"":"s"} with new times to update</li>${res.madd.length?`<li><b>${res.madd.length}</b> new Mercor entr${res.madd.length===1?"y":"ies"} to add</li>`:""}<li>${res.same} already in the tracker, unchanged</li>${res.skipped.length?`<li>${res.skipped.length} row${res.skipped.length===1?"":"s"} skipped: ${res.skipped.slice(0,5).join("; ")}${res.skipped.length>5?"; …":""}</li>`:""}</ul>`;
     const rowsHtml=[...res.add.map(s=>({s,t:"New"})),...res.change.map(s=>({s,t:`Was ${fmt12(s.old.in)}–${fmt12(s.old.out)}`}))].sort((a,b)=>a.s.date<b.s.date?-1:1)
       .map(({s,t})=>{const c=calc(s);return `<tr><td>${fmtD(s.date)}</td><td>${JOB[s.job].short}</td><td>${fmt12(s.in)}–${fmt12(s.out)}</td><td>${hrs(c.paid)} h</td><td>${money(c.earn)}</td><td>${t}</td></tr>`}).join("")
-      +res.madd.map(t=>{const x=tcalc(t);return `<tr><td>${fmtD(t.date)}</td><td>Mercor</td><td>${esc(t.project)}</td><td>${hrs(t.hours)} h</td><td>${usd(x.usd)}${t.fx?` (${money(x.cad)})`:""}</td><td>${t.fx?"New":"No exchange rate"}</td></tr>`}).join("");
+      +res.madd.map(t=>{const x=tcalc(t);return `<tr><td>${fmtD(t.date)}</td><td>Mercor</td><td>${esc(t.project)}</td><td>${t.payType==="task"?"Per task":hrs(t.hours)+" h"}</td><td>${usd(x.usd)}${t.fx?` (${money(x.cad)})`:""}</td><td>${t.fx?"New":"No exchange rate"}</td></tr>`}).join("");
     $("importList").innerHTML=n?`<thead><tr><th>Date</th><th>Job</th><th>Time</th><th>Paid</th><th>Pay</th><th></th></tr></thead><tbody>${rowsHtml}</tbody>`:"";
     $("importListWrap").hidden=!n;$("importGo").hidden=!n;$("importGo").textContent=`Add ${n} entr${n===1?"y":"ies"}`;
     if(!n)$("importSummary").insertAdjacentHTML("beforeend",'<p class="hint">Nothing new to add from this file.</p>');
@@ -910,7 +937,7 @@ $("importGo").addEventListener("click",async()=>{if(!pendingImport)return;const 
     const rows=add.map(s=>({user_id:S.user.id,date:s.date,job:s.job,time_in:s.in,time_out:s.out,updated_at:now}));
     for(let i=0;i<rows.length;i+=200){const {error}=await sb.from("shifts").insert(rows.slice(i,i+200));if(error)throw error}
     for(const s of change){const {error}=await sb.from("shifts").update({time_in:s.in,time_out:s.out,updated_at:now}).eq("id",s.id);if(error)throw error}
-    const mrows=(madd||[]).filter(t=>t.fx>0).map(t=>({user_id:S.user.id,date:t.date,project:t.project,hours:t.hours,rate_usd:t.rate,bonus_usd:t.bonus,bonus_note:t.note||null,fx:t.fx,updated_at:now}));
+    const mrows=(madd||[]).filter(t=>t.fx>0).map(t=>({user_id:S.user.id,date:t.date,project:t.project,hours:t.hours,rate_usd:t.rate,bonus_usd:t.bonus,bonus_note:t.note||null,fx:t.fx,updated_at:now,...(S.merV2!==false?{pay_type:t.payType,pay_run:t.payRun,bonus_run:t.bonusRun}:{})}));
     if(mrows.length){if(S.merReady===false)throw new Error("mercor table missing");const {error}=await sb.from("mercor_tasks").insert(mrows);if(error)throw error}
     pendingImport=null;$("importBox").hidden=true;await loadAll();toast(`Added ${add.length+((madd||[]).filter(t=>t.fx>0).length)}, updated ${change.length}`)}
   catch(x){toast("Couldn't save everything. Check your connection and try again.");await loadAll()}
@@ -926,8 +953,10 @@ async function loadAll(){
   $("banner").hidden=true;
   rates={};b.data.forEach(r=>(rates[r.job]=rates[r.job]||[]).push({from:r.effective_from,rate:Number(r.rate)}));
   S.shifts=a.data.map(x=>({id:x.id,date:x.date,job:x.job,in:normT(x.time_in),out:normT(x.time_out)}));
-  const m=await sb.from("mercor_tasks").select("id,date,project,hours,rate_usd,bonus_usd,bonus_note,fx").order("date").limit(10000);
-  S.merReady=!m.error;S.tasks=m.error?[]:m.data.map(x=>({id:x.id,date:x.date,project:x.project,hours:Number(x.hours),rate:Number(x.rate_usd),bonus:Number(x.bonus_usd)||0,note:x.bonus_note||"",fx:Number(x.fx)}));
+  let m=await sb.from("mercor_tasks").select("id,date,project,hours,rate_usd,bonus_usd,bonus_note,fx,pay_type,pay_run,bonus_run").order("date").limit(10000);
+  S.merV2=!m.error;
+  if(m.error)m=await sb.from("mercor_tasks").select("id,date,project,hours,rate_usd,bonus_usd,bonus_note,fx").order("date").limit(10000); // before the pay_type/bonus_run update
+  S.merReady=!m.error;S.tasks=m.error?[]:m.data.map(x=>({id:x.id,date:x.date,project:x.project,hours:Number(x.hours)||0,rate:Number(x.rate_usd),bonus:Number(x.bonus_usd)||0,note:x.bonus_note||"",fx:Number(x.fx),payType:x.pay_type||"hour",payRun:x.pay_run||"wed",bonusRun:x.bonus_run||x.pay_run||"wed"}));
   S.loaded=true;$("dlBtn").hidden=!S.shifts.length&&!S.tasks.length;
   if(!b.data.length)banner("Add your pay rates under “Pay rates & break rules”, or import your backup file there, so earnings can be worked out.");
   syncForm();render()}

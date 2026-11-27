@@ -27,8 +27,9 @@ Only the code is in this repository. No shift or pay data is stored here.
 - Shifts on future dates are marked **Scheduled**.
 
 ### Mercor (contract work, paid in US$)
-- Log work by **date, project or task, hours, and hourly rate in US$**. Hours can be typed as `2.5`, `2:30` or `2h 30m`.
-- Each project remembers its last rate, so picking a project fills in the rate.
+- **Pay type per entry:** **Hourly** (hours × US$ rate; hours as `2.5`, `2:30` or `2h 30m`) or **Per task** (a fixed US$ amount for the task; time spent is optional).
+- **Paid on Wednesday or Friday:** each entry chooses which payment run pays its base pay, and separately which run pays its bonus, since Mercor projects can differ.
+- Each project remembers its last rate, pay type and payment days, so picking a project fills them in.
 - **Bonuses:** none, a flat amount (US$), or an extra amount per hour (US$/h), with a note like "Weekend bonus". Bonuses are shown separately from base pay.
 - **US$ → CA$:** the exchange rate for that day is looked up automatically (ECB rate via frankfurter.dev, with the Bank of Canada as a backup) and saved with each entry. It can be changed by hand to match the rate Mercor's payout actually used.
 - The Mercor section shows US$ earned, the CA$ equivalent, hours, average rate, a breakdown by project, and the month's entries.
@@ -95,7 +96,7 @@ New raises are added on the site under **Pay rates & break rules**. Each raise s
 | University AV/IT | 1st–15th | 25th of the same month |
 | University AV/IT | 16th–end of month | 10th of the next month |
 | Winners | 2 weeks, Sunday → Saturday (e.g. Sep 27 – Oct 10) | Friday, 6 days after the period ends (e.g. Oct 16) |
-| Mercor | 1 week, Friday → Friday (cutoff Fri 10:30 AM PT) | The following Wednesday |
+| Mercor | 1 week, Friday → Friday (cutoff Fri 10:30 AM PT) | Wednesday run the following week, or that week's Friday run (2 days later). Chosen per entry, separately for base pay and bonus |
 | Stampede | Not set up yet | — |
 
 - University paydays that fall on a Saturday or Sunday are paid the **Friday before** (for example, the Oct 25, 2026 pay arrived Fri Oct 23).
@@ -115,7 +116,7 @@ New raises are added on the site under **Pay rates & break rules**. Each raise s
 |---|---|
 | `shifts` | date, job, time in, time out |
 | `rates` | job, start date, hourly rate (CA$) |
-| `mercor_tasks` | date, project, hours, rate (US$), bonus (US$), bonus note, US$→CA$ rate |
+| `mercor_tasks` | date, project, hours, rate or task pay (US$), pay type (hourly / per task), base pay run (Wed/Fri), bonus (US$), bonus run (Wed/Fri), bonus note, US$→CA$ rate |
 
 All tables use row-level security, so each signed-in user only sees their own rows. The SQL for every table is in `setup.sql`. It's safe to run again, because it skips anything that already exists.
 
@@ -140,6 +141,7 @@ All tables use row-level security, so each signed-in user only sees their own ro
 
 | Date | Change |
 |---|---|
+| 2026-11-26 | **Mercor per-task pay and Wed/Fri runs:** entries can be Hourly or Per task. Each entry picks Wednesday or Friday for its base pay and for its bonus, and each project remembers these choices. Paydays show the Wednesday and Friday runs separately. Excel has Pay type, Paid on and Bonus paid columns. Database: three new columns on `mercor_tasks` (see `setup.sql`). |
 | 2026-11-25 | **Fix — Winners breaks:** a Winners shift of exactly 5 hours now gets its 30-minute unpaid break (it was getting none). AV/IT is unchanged: exactly 5 hours has no break. |
 | 2026-11-09 | **"All time" shows its start date:** the By job toggle reads "Since May 2026", with the exact date of your first entry under the heading, so it's clear the totals only cover what has been logged. |
 | 2026-11-09 | **Fix:** on iPhone, the date and time boxes no longer spill outside their card or cover each other. |
